@@ -1,0 +1,237 @@
+.TH COMPACTOR 1 "2026-09-23" "compactor" "Roll up S3 event objects into day/week/month JSONL, preserving client-side encryption."
+.SH NAME
+compactor - Roll up S3 event objects into day/week/month JSONL, preserving client-side encryption\&.
+.SH SYNOPSIS
+\fBcompactor\fP [\fIoptions\&.\&.\&.\fP] [\fIargument\&.\&.\&.\fP]
+.SH DESCRIPTION
+.SH OPTIONS
+.TP
+\fB--config=PATH\fP
+Path to YAML config file (default: XDG config dir)\&.
+.TP
+\fB--encryption-age-identity-file=STRING\fP
+Path to age identity file (required for decrypt/materialize)\&.
+.TP
+\fB--encryption-age-recipients=ENCRYPTION-AGE-RECIPIENTS,\&.\&.\&.\fP
+age1\&.\&.\&. recipient public keys\&.
+.TP
+\fB--encryption-scheme="none"\fP
+Rollup output scheme\&.
+.TP
+\fB-h, --help\fP
+Show context-sensitive help\&.
+.TP
+\fB--listen-debounce=5s\fP
+Coalesce a burst of notifications for one day into a single reconcile\&.
+.TP
+\fB--listen-http-addr=":8080"\fP
+Address to serve /healthz and /readyz on\&.
+.TP
+\fB--listen-nats-consumer="compactor"\fP
+Durable JetStream consumer name\&.
+.TP
+\fB--listen-nats-stream="minio-events"\fP
+JetStream stream MinIO's NATS notification target publishes to\&.
+.TP
+\fB--listen-nats-subject="minio\&.events\&.>"\fP
+Filter subject within the stream\&.
+.TP
+\fB--listen-nats-url="nats://127\&.0\&.0\&.1:4222"\fP
+NATS server URL\&.
+.TP
+\fB--logging-format="text"\fP
+Log format\&.
+.TP
+\fB--logging-level="info"\fP
+Log level\&.
+.TP
+\fB--materialize-cache-ttl=1h\fP
+Materialized scratch file TTL, for the expiry sweep\&.
+.TP
+\fB--paths-checkpoint-prefix="checkpoints"\fP
+Checkpoint key prefix\&.
+.TP
+\fB--paths-rollup-prefix="rollups"\fP
+Rollup key prefix\&.
+.TP
+\fB--paths-source-prefix=STRING\fP
+Base prefix under which year/month/day raw events live\&.
+.TP
+\fB--rollup-straggler-days=1\fP
+Also re-check N prior days on every hourly run\&.
+.TP
+\fB--rollup-week-start="monday"\fP
+Reserved; ISO 8601 (Monday-start) weeks are used today\&.
+.TP
+\fB--s3-bucket=STRING\fP
+Bucket name\&.
+.TP
+\fB--s3-endpoint=STRING\fP
+S3 endpoint (empty = AWS default; set for MinIO, e\&.g\&. http://localhost:9000)\&.
+.TP
+\fB--s3-region="us-east-1"\fP
+AWS region\&.
+.TP
+\fB--s3-use-path-style\fP
+Use path-style S3 addressing (most MinIO deployments)\&.
+.TP
+\fB--version\fP
+Print version and exit\&.
+.SH COMMANDS
+.TP
+\fBcheckpoint <command> [flags]\fP
+.RS 4
+Inspect or reset checkpoint state\&.
+.RE
+.TP
+\fBCOMMANDS\fP
+.RS 4
+\fBcheckpoint reset [flags]\fP
+.RS 4
+Clear a checkpoint's tracking state (operator escape hatch)\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--confirm\fP
+Required to actually perform the reset\&.
+.TP
+\fB--day=STRING\fP
+Day checkpoint to target (YYYY-MM-DD)\&.
+.TP
+\fB--month=STRING\fP
+Month checkpoint to target (YYYY-MM)\&.
+.TP
+\fB--week=STRING\fP
+Week checkpoint to target (YYYY-Www)\&.
+.RE
+.TP
+\fBcheckpoint show [flags]\fP
+.RS 4
+Print a checkpoint's current state as JSON\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--day=STRING\fP
+Day checkpoint to target (YYYY-MM-DD)\&.
+.TP
+\fB--month=STRING\fP
+Month checkpoint to target (YYYY-MM)\&.
+.TP
+\fB--week=STRING\fP
+Week checkpoint to target (YYYY-Www)\&.
+.RE
+.RE
+.TP
+\fBcompletions <command> [flags]\fP
+.RS 4
+Generate a shell completion script\&.
+.RE
+.TP
+\fBCOMMANDS\fP
+.RS 4
+\fBcompletions bash [flags]\fP
+.RS 4
+Generate a bash completion script\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB-o, --output=STRING\fP
+Write to this file instead of stdout\&.
+.RE
+.TP
+\fBcompletions fish [flags]\fP
+.RS 4
+Generate a fish completion script\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB-o, --output=STRING\fP
+Write to this file instead of stdout\&.
+.RE
+.TP
+\fBcompletions zsh [flags]\fP
+.RS 4
+Generate a zsh completion script\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB-o, --output=STRING\fP
+Write to this file instead of stdout\&.
+.RE
+.RE
+.TP
+\fBlisten [flags]\fP
+.RS 4
+Run as a long-lived event-driven daemon (NATS-triggered rollups, health probes)\&.
+.RE
+.TP
+\fBman [flags]\fP
+.RS 4
+Generate the man page\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB-o, --output=STRING\fP
+Write to this file instead of stdout\&.
+.RE
+.TP
+\fBmaterialize <key> [flags]\fP
+.RS 4
+Decrypt a rollup object into a local scratch file for DuckDB\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--keep\fP
+Skip sweeping expired scratch files from a previous run before materializing\&.
+.TP
+\fB--out=STRING\fP
+Scratch directory to write the decrypted file into (default: XDG cache dir)\&.
+.RE
+.TP
+\fBrollup <command> [flags]\fP
+.RS 4
+Roll up source events into day/week/month JSONL\&.
+.RE
+.TP
+\fBCOMMANDS\fP
+.RS 4
+\fBrollup hourly [flags]\fP
+.RS 4
+Incremental day rollup (current day + configured stragglers)\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--day=STRING\fP
+Day to process (YYYY-MM-DD); default: today plus configured straggler days\&.
+.RE
+.TP
+\fBrollup promote-month [flags]\fP
+.RS 4
+Rebuild a month rollup from its week rollups\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--month=STRING\fP
+Month to promote (YYYY-MM); default: current month\&.
+.RE
+.TP
+\fBrollup promote-week [flags]\fP
+.RS 4
+Rebuild a week rollup from its day rollups\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--week=STRING\fP
+ISO week to promote (YYYY-Www); default: current ISO week\&.
+.RE
+.RE

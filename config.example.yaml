@@ -1,0 +1,62 @@
+s3:
+  endpoint: "" # empty = AWS default; set for MinIO, e.g. "http://localhost:9000"
+  region: "us-east-1"
+  bucket: "events"
+  use-path-style: false # true for most MinIO deployments
+
+paths:
+  source-prefix: "" # base under which year/month/day raw events live
+  rollup-prefix: "rollups"
+  checkpoint-prefix: "checkpoints"
+
+encryption:
+  scheme: none # rollup OUTPUT scheme: "none" | "age" (source objects are detected independently and may mix schemes; see ADR 0008)
+  age:
+    recipients: [] # age1... public keys, required if scheme is "age"
+    identity-file: "" # path to age identity file, required for decrypt/materialize
+  # A source-decode-only codec (crypto.AESCTRGzipCodec, for reading a
+  # Redpanda Connect/Benthos-style gzip+AES-CTR JSONL source with the
+  # IV embedded in the filename) is enabled by setting the
+  # COMPACTOR_SOURCE_AES_CTR_GZIP_KEY env var (hex-encoded AES key) —
+  # not here, so key material never has to live in a config file.
+
+rollup:
+  straggler-days: 1 # also re-check N prior days on every hourly run
+  week-start: monday # reserved; ISO 8601 (Monday-start) weeks are used today
+
+materialize:
+  cache-ttl: 1h
+
+# Used only by `compactor listen` (the long-lived, event-driven
+# Deployment mode). `compactor rollup ...` / `materialize` /
+# `checkpoint ...` (the CronJob/one-shot CLI mode) ignore this section.
+listen:
+  nats:
+    url: "nats://127.0.0.1:4222"
+    stream: "minio-events" # JetStream stream MinIO's NATS notification target publishes to
+    subject: "minio.events.>" # filter subject within the stream
+    consumer: "compactor" # durable JetStream consumer name
+  http-addr: ":8080" # serves /healthz (liveness) and /readyz (readiness)
+  debounce: 5s # coalesce a burst of notifications for one day into a single reconcile
+
+logging:
+  level: info
+  format: text
+
+# Metrics (both modes) are OpenTelemetry, exported via OTLP using the
+# standard environment variables rather than app config — e.g.:
+#   OTEL_METRICS_EXPORTER=otlp                  (default; "prometheus" | "console" | "none" also supported)
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.monitoring.svc:4317
+#   OTEL_EXPORTER_OTLP_PROTOCOL=grpc            ("http/protobuf" also supported)
+#   OTEL_SERVICE_NAME=compactor
+# See docs/adr/0007-otel-metrics-via-autoexport.md.
+
+# All of the above are also available as CLI flags (kebab-case,
+# section-prefixed — e.g. --s3-bucket, --encryption-age-recipients,
+# --listen-nats-url — run `compactor --help` for the full list), and
+# as this YAML file. Precedence: explicit flag > --config file (or the
+# XDG default, $XDG_CONFIG_HOME/compactor/config.yaml, if present) >
+# the default shown here. Nested keys must use dashes, not
+# underscores — github.com/alecthomas/kong-yaml resolves a value by
+# joining each flag's full dash-separated name and walking this file's
+# nesting to match it.
