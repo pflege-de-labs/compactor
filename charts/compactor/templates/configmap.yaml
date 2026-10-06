@@ -1,0 +1,24 @@
+{{- if not .Values.existingConfig }}
+{{- /* Copy so the derived keys below never leak back into .Values. */}}
+{{- $cfg := deepCopy .Values.config }}
+{{- $_ := required "config.s3.bucket is required (or set existingConfig)" (dig "s3" "bucket" "" $cfg) }}
+{{- $listen := default (dict) (get $cfg "listen") }}
+{{- $_ := set $listen "http-addr" (printf ":%d" (int .Values.listen.port)) }}
+{{- $_ := set $cfg "listen" $listen }}
+{{- if .Values.ageIdentity.existingSecret }}
+{{- $enc := default (dict) (get $cfg "encryption") }}
+{{- $age := default (dict) (get $enc "age") }}
+{{- $_ := set $age "identity-file" (printf "/etc/compactor/age/%s" .Values.ageIdentity.key) }}
+{{- $_ := set $enc "age" $age }}
+{{- $_ := set $cfg "encryption" $enc }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "compactor.configMapName" . }}
+  labels:
+    {{- include "compactor.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- toYaml $cfg | nindent 4 }}
+{{- end }}

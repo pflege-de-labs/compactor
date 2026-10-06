@@ -1,0 +1,16 @@
+apiVersion: v2
+name: compactor
+description: Deploys compactor, which rolls up S3 event objects into day/week/month JSONL, as an event-driven listener and/or scheduled CronJobs
+type: application
+home: https://github.com/pflege-de-labs/compactor
+sources:
+  - https://github.com/pflege-de-labs/compactor
+keywords:
+  - s3
+  - jsonl
+  - duckdb
+  - rollup
+# The chart is versioned independently of the application; appVersion tracks the
+# compactor release whose image the defaults point at.
+version: 0.1.0
+appVersion: "0.1.0"

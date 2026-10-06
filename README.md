@@ -59,6 +59,18 @@ The image's entrypoint is `/compactor` with no default subcommand:
 run `listen` as a Deployment and `rollup hourly` as a CronJob. See
 [ADR 0009](docs/adr/0009-ci-cd-pipeline.md).
 
+## Kubernetes
+
+A Helm chart in [`charts/compactor`](charts/compactor/README.md) deploys the
+listener (Deployment or StatefulSet) and/or CronJobs:
+
+```sh
+helm install compactor oci://ghcr.io/pflege-de-labs/charts/compactor \
+  --set config.s3.bucket=my-events
+```
+
+See [ADR 0010](docs/adr/0010-helm-chart.md).
+
 ## Encryption
 
 Source objects may be plaintext, age-encrypted, or (for one specific

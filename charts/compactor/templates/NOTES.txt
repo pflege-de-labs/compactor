@@ -1,0 +1,23 @@
+compactor {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}".
+
+{{- if .Values.listen.enabled }}
+
+Listener ({{ .Values.listen.kind }}, {{ .Values.listen.replicaCount }} replica(s)) consumes bucket notifications from
+{{ .Values.config.listen.nats.url }} (stream "{{ .Values.config.listen.nats.stream }}") and serves /healthz and /readyz on port {{ .Values.listen.port }}.
+{{- end }}
+{{- range $key, $name := dict "hourly" "rollup hourly" "promoteWeek" "rollup promote-week" "promoteMonth" "rollup promote-month" }}
+{{- $job := index $.Values.cronJobs $key }}
+{{- if $job.enabled }}
+
+CronJob "compactor {{ $name }}" runs on schedule "{{ $job.schedule }}".
+{{- end }}
+{{- end }}
+{{- if and (not .Values.listen.enabled) (not .Values.cronJobs.hourly.enabled) (not .Values.cronJobs.promoteWeek.enabled) (not .Values.cronJobs.promoteMonth.enabled) }}
+
+WARNING: nothing is enabled. Set listen.enabled or one of cronJobs.*.enabled.
+{{- end }}
+{{- if and .Values.listen.enabled (not .Values.cronJobs.hourly.enabled) }}
+
+The listener only reacts to notifications; a day's rollup is not rebuilt if a
+notification is missed. Enable cronJobs.hourly as a safety net if that matters.
+{{- end }}

@@ -1,0 +1,78 @@
+{{- /* One CronJob per enabled entry; name is the kebab-case suffix, args the compactor subcommand. */}}
+{{- $jobs := list
+      (dict "key" "hourly" "name" "hourly" "args" (list "rollup" "hourly"))
+      (dict "key" "promoteWeek" "name" "promote-week" "args" (list "rollup" "promote-week"))
+      (dict "key" "promoteMonth" "name" "promote-month" "args" (list "rollup" "promote-month")) }}
+{{- range $jobs }}
+{{- $job := index $.Values.cronJobs .key }}
+{{- if $job.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-%s" (include "compactor.fullname" $) .name | trunc 52 | trimSuffix "-" }}
+  labels:
+    {{- include "compactor.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ .name }}
+spec:
+  schedule: {{ required (printf "cronJobs.%s.schedule is required" .key) $job.schedule | quote }}
+  suspend: {{ $job.suspend | default false }}
+  concurrencyPolicy: {{ $.Values.cronJobs.concurrencyPolicy }}
+  startingDeadlineSeconds: {{ $.Values.cronJobs.startingDeadlineSeconds }}
+  successfulJobsHistoryLimit: {{ $.Values.cronJobs.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $.Values.cronJobs.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $.Values.cronJobs.backoffLimit }}
+      {{- if ne (toString $.Values.cronJobs.ttlSecondsAfterFinished) "" }}
+      ttlSecondsAfterFinished: {{ $.Values.cronJobs.ttlSecondsAfterFinished }}
+      {{- end }}
+      template:
+        metadata:
+          annotations:
+            checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") $ | sha256sum }}
+            checksum/credentials: {{ include (print $.Template.BasePath "/secret-credentials.yaml") $ | sha256sum }}
+            {{- with $.Values.podAnnotations }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          labels:
+            {{- include "compactor.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: {{ .name }}
+            {{- with $.Values.podLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        spec:
+          {{- include "compactor.podSpecShared" $ | nindent 10 }}
+          restartPolicy: Never
+          containers:
+            - name: compactor
+              {{- with $.Values.securityContext }}
+              securityContext:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              image: {{ include "compactor.image" $ | quote }}
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              args:
+                - --config=/etc/compactor/config.yaml
+                {{- range .args }}
+                - {{ . }}
+                {{- end }}
+                {{- with $job.args }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+              env:
+                {{- include "compactor.env" $ | nindent 16 }}
+              {{- with (include "compactor.envFrom" $) }}
+              envFrom:
+                {{- . | nindent 16 }}
+              {{- end }}
+              {{- with $.Values.cronJobs.resources }}
+              resources:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              volumeMounts:
+                {{- include "compactor.volumeMounts" $ | nindent 16 }}
+          volumes:
+            {{- include "compactor.volumes" $ | nindent 12 }}
+{{- end }}
+{{- end }}

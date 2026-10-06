@@ -1,0 +1,11 @@
+# No listener: scheduled rollups only.
+config:
+  s3:
+    bucket: events
+listen:
+  enabled: false
+cronJobs:
+  hourly:
+    enabled: true
+    args: ["--day=2026-10-01"]
+  ttlSecondsAfterFinished: 86400

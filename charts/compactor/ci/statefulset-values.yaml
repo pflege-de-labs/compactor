@@ -1,0 +1,20 @@
+# Listener as a StatefulSet with a PDB and a NetworkPolicy.
+config:
+  s3:
+    bucket: events
+listen:
+  kind: statefulset
+  replicaCount: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+networkPolicy:
+  enabled: true
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nats
+      ports:
+        - port: 4222
+          protocol: TCP

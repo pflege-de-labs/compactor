@@ -2,6 +2,7 @@
 compactor
 .github
 docs
+charts
 dist
 coverage.out
 coverage.out.raw

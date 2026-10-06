@@ -1,0 +1,55 @@
+{{- if .Values.listen.enabled }}
+{{- if not (has .Values.listen.kind (list "deployment" "statefulset")) }}
+{{- fail (printf "listen.kind must be deployment or statefulset, got %q" .Values.listen.kind) }}
+{{- end }}
+{{- if eq .Values.listen.kind "statefulset" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "compactor.fullname" . }}
+  labels:
+    {{- include "compactor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: listen
+spec:
+  replicas: {{ .Values.listen.replicaCount }}
+  serviceName: {{ include "compactor.fullname" . }}-headless
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "compactor.listenSelectorLabels" . | nindent 6 }}
+  template:
+    {{- include "compactor.listenPodTemplate" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "compactor.fullname" . }}-headless
+  labels:
+    {{- include "compactor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: listen
+spec:
+  clusterIP: None
+  selector:
+    {{- include "compactor.listenSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.listen.port }}
+      targetPort: http
+      protocol: TCP
+{{- else }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "compactor.fullname" . }}
+  labels:
+    {{- include "compactor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: listen
+spec:
+  replicas: {{ .Values.listen.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "compactor.listenSelectorLabels" . | nindent 6 }}
+  template:
+    {{- include "compactor.listenPodTemplate" . | nindent 4 }}
+{{- end }}
+{{- end }}
