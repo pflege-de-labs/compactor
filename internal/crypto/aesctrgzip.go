@@ -15,6 +15,9 @@ import (
 
 const aesCTRGzipScheme Scheme = "aes-ctr-gzip"
 
+// AES-CTR has no integrity tag, so a corrupt object could inflate without bound into memory; real batches are far smaller.
+const maxDecompressedSize = 256 << 20
+
 // AESCTRGzipCodec reads a source format some upstream producers use
 // (e.g. a Redpanda Connect / Benthos pipeline batching events into
 // gzip-compressed, AES-CTR-encrypted JSONL files): the object body is
@@ -72,8 +75,12 @@ func (c *AESCTRGzipCodec) Decrypt(_ context.Context, w io.Writer, r io.Reader, k
 	}
 	defer gz.Close()
 
-	if _, err := io.Copy(w, gz); err != nil {
+	n, err := io.Copy(w, io.LimitReader(gz, maxDecompressedSize+1))
+	if err != nil {
 		return fmt.Errorf("crypto/aesctrgzip: decompress: %w", err)
+	}
+	if n > maxDecompressedSize {
+		return fmt.Errorf("crypto/aesctrgzip: %q decompresses to more than %d bytes", key, maxDecompressedSize)
 	}
 	return nil
 }

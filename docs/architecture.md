@@ -148,6 +148,14 @@ none of it, work with zero configuration (no bucket, no credentials).
 It's still constructed exactly once and shared if a real command's
 `Run()` does ask for it.
 
+## CI/CD
+
+GitHub Actions builds and cosign-signs a container image per commit
+(gated on a shared `go-checks.yml`), and a `v*` tag rebuilds, re-gates
+and signs the release image and publishes signed binaries with SBOMs.
+Renovate keeps dependencies and Action pins current. See
+[ADR 0009](adr/0009-ci-cd-pipeline.md).
+
 ## Deferred (see plan / ADRs for detail)
 
 - PGP / static-symmetric-key `crypto.Codec` backends.
@@ -159,6 +167,5 @@ It's still constructed exactly once and shared if a real command's
 - A stronger lock/lease mechanism beyond optimistic conditional PUT.
 - Dead-letter handling for malformed source events (currently: log,
   skip, mark processed so it isn't retried forever).
-- CI (tests, govulncheck, gosec, coverage gate, Renovate, cosign
-  signing) — separate follow-up per the project's `github-ci`
-  convention.
+- A coverage gate (CI reports total coverage but doesn't enforce a
+  threshold yet, see ADR 0009) and the Helm chart publishing workflow.

@@ -43,20 +43,23 @@ func Materialize(ctx context.Context, store storage.ObjectStore, registry *crypt
 
 	outName := strings.ReplaceAll(strings.TrimPrefix(key, "/"), "/", "_")
 	outName = strings.TrimSuffix(outName, codec.KeyExt())
+	if outName == "" || outName == "." || outName == ".." {
+		return "", nil, fmt.Errorf("materialize: key %q does not name an object", key)
+	}
 	outPath := filepath.Join(outDir, outName)
 
-	f, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600) // #nosec G304 -- "/" is flattened to "_" and "."/".." are rejected above, so outPath stays inside outDir
 	if err != nil {
 		return "", nil, fmt.Errorf("materialize: create scratch file: %w", err)
 	}
 
 	if err := codec.Decrypt(ctx, f, body, key); err != nil {
-		f.Close()
-		os.Remove(outPath)
+		_ = f.Close()
+		_ = os.Remove(outPath)
 		return "", nil, fmt.Errorf("materialize: decrypt %s: %w", key, err)
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(outPath)
+		_ = os.Remove(outPath)
 		return "", nil, fmt.Errorf("materialize: close scratch file: %w", err)
 	}
 

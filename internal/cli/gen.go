@@ -65,5 +65,5 @@ func writeGenerated(path string, data []byte) error {
 		_, err := os.Stdout.Write(data)
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o644) // #nosec G306 -- generated docs/completions are meant to be world-readable
 }

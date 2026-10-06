@@ -1,0 +1,10 @@
+# build output
+/compactor
+/dist/
+
+# test coverage
+coverage.out
+coverage.out.raw
+
+# local config (config.example.yaml is the tracked template)
+/config.yaml

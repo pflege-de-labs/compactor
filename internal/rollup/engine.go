@@ -186,7 +186,7 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		}
 		var decoded bytes.Buffer
 		decErr := srcCodec.Decrypt(ctx, &decoded, body, d.event.Meta.Key)
-		body.Close()
+		_ = body.Close()
 		if decErr != nil {
 			log.Warn("failed to decrypt source event, skipping", "object", d.event.Meta.Key, "error", decErr)
 			skippedBad++

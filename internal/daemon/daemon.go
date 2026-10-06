@@ -32,7 +32,11 @@ type Deps struct {
 // each debounce window.
 func Listen(ctx context.Context, deps Deps) error {
 	health := &Health{}
-	httpServer := &http.Server{Addr: deps.HTTPAddr, Handler: health.Handler()}
+	httpServer := &http.Server{
+		Addr:              deps.HTTPAddr,
+		Handler:           health.Handler(),
+		ReadHeaderTimeout: 10 * time.Second, // probes are tiny; don't let a slow client hold a connection open
+	}
 
 	httpErrCh := make(chan error, 1)
 	go func() {

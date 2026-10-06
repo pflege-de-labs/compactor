@@ -8,6 +8,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"testing"
 
 	"github.com/pflege-de-labs/compactor/internal/crypto"
@@ -89,5 +90,27 @@ func TestAESCTRGzipCodec_EncryptIsUnsupported(t *testing.T) {
 func TestNewAESCTRGzipCodec_RejectsBadKeyLength(t *testing.T) {
 	if _, err := crypto.NewAESCTRGzipCodec(hex.EncodeToString([]byte("short"))); err == nil {
 		t.Fatal("expected an error for a key of invalid length")
+	}
+}
+
+func TestAESCTRGzipCodec_RejectsDecompressionBomb(t *testing.T) {
+	if testing.Short() {
+		t.Skip("inflates 256 MiB of zeros")
+	}
+
+	key := bytes.Repeat([]byte{0x42}, 32)
+	chunk := make([]byte, 1<<20)
+	var plaintext bytes.Buffer
+	for range 257 {
+		plaintext.Write(chunk)
+	}
+	ciphertext, keyName := encodeLikeKeybaerchive(t, key, plaintext.Bytes())
+
+	codec, err := crypto.NewAESCTRGzipCodec(hex.EncodeToString(key))
+	if err != nil {
+		t.Fatalf("new codec: %v", err)
+	}
+	if err := codec.Decrypt(context.Background(), io.Discard, bytes.NewReader(ciphertext), keyName); err == nil {
+		t.Fatal("expected an error for an object that decompresses past the size cap")
 	}
 }

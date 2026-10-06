@@ -26,10 +26,18 @@ gofmt -l .          # must print nothing — gofmt -w if it doesn't
 go test ./...
 ```
 
-All four must be clean. If you touched `internal/cli` (flag names,
-help text, new commands), also run `go generate ./...` from
-`cmd/compactor` (or `go generate ./...` at the repo root) and include
-the resulting diff under `docs/man/` and `docs/completions/`.
+All four must be clean, and CI additionally enforces `go mod tidy`
+cleanliness, `govulncheck` and `gosec` (see `CONTRIBUTING.md` for the
+commands). If you touched `internal/cli` (flag names, help text, new
+commands), also run `go generate ./...` and include the resulting diff
+under `docs/man/` and `docs/completions/` — CI fails when they are
+stale (the man page's `.TH` date line is ignored). The `gosec` check
+is clean; fix real findings and annotate intentional ones with
+`#nosec Gxxx -- <reason>`.
+
+Don't hand-bump GitHub Action pins, the Dockerfile base images or
+Go dependencies purely for freshness: Renovate owns them. CI/CD
+decisions are in `docs/adr/0009-ci-cd-pipeline.md`.
 
 Prefer verifying behavior empirically over trusting a package's docs
 or your own recollection of its API, especially for less-common

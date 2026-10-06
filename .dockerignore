@@ -1,0 +1,9 @@
+.git
+compactor
+.github
+docs
+dist
+coverage.out
+coverage.out.raw
+*.md
+config.yaml

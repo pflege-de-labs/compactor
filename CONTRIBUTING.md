@@ -21,9 +21,31 @@ gofmt -l .          # should print nothing
 go test ./...
 ```
 
-All four should be clean before opening a PR. There's no CI wired up
-yet (see `docs/architecture.md`'s Deferred section) — these local
-commands are the whole check for now.
+CI (`.github/workflows/go-checks.yml`) runs those plus the checks
+below on every PR and `main` push, so reproduce them locally before
+opening a PR:
+
+```sh
+go mod tidy && git diff --exit-code go.mod go.sum        # tidy
+go generate ./... && git diff --exit-code -I '^\.TH ' docs/man docs/completions  # man page/completions current
+go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
+go install github.com/securego/gosec/v2/cmd/gosec@latest && gosec ./...
+```
+
+Coverage is reported in the job summary but not gated yet (see
+[ADR 0009](docs/adr/0009-ci-cd-pipeline.md)). Pushes to `main` and PRs
+from this repository also build and sign a container image; see the
+ADR for how images, tags and releases work.
+
+## Releasing
+
+Cut a release by pushing a `vX.Y.Z` tag on `main`; the `Release`
+workflow re-runs the checks, builds and signs the multi-arch image,
+and publishes binaries, SBOMs and a signed `checksums.txt` as a GitHub
+release. A tag with a suffix (`v0.2.0-rc.1`) is a pre-release and does
+not move `:latest`. Workflow action pins are managed by Renovate; don't
+bump them by hand. The workflows need the `SO_API_TOKEN` (SecObserve)
+and `RENOVATE_TOKEN` repository secrets.
 
 ## Local end-to-end testing
 

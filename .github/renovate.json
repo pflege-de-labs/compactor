@@ -1,0 +1,165 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "baseBranchPatterns": [
+    "main"
+  ],
+  "timezone": "Europe/Berlin",
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "prConcurrentLimit": 5,
+  "rebaseWhen": "behind-base-branch",
+  "labels": [
+    "dependencies"
+  ],
+  "platformAutomerge": true,
+  "ignoreDeps": [
+    "github.com/pflege-de-labs/compactor"
+  ],
+  "packageRules": [
+    {
+      "description": "Go minor and patch bumps merge themselves once the branch protection rules are satisfied.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "go dependencies",
+      "automerge": true
+    },
+    {
+      "description": "The AWS SDK ships ~20 modules that share internal versions; a partial bump does not compile, so they move together.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPackageNames": [
+        "github.com/aws/**"
+      ],
+      "groupName": "aws sdk"
+    },
+    {
+      "description": "otel, its metric/sdk packages, the exporters and the contrib autoexport module are one release train.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPackageNames": [
+        "go.opentelemetry.io/**"
+      ],
+      "groupName": "opentelemetry"
+    },
+    {
+      "description": "A major Go bump can change behaviour, so it waits for a person.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "additionalBranchPrefix": "major-",
+      "automerge": false
+    },
+    {
+      "description": "The Go toolchain is a deliberate choice, not a routine bump, and must not ride along with a library update.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "golang",
+        "toolchain"
+      ],
+      "groupName": "go toolchain",
+      "automerge": false
+    },
+    {
+      "description": "Actions are pinned to a commit sha. Digest and version bumps within a major are covered by the same CI that gates everything else.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "minor",
+        "patch",
+        "pin"
+      ],
+      "groupName": "github actions",
+      "automerge": true
+    },
+    {
+      "description": "A major action bump can rename inputs, so it waits for a person.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Base images are pinned by digest; a rebuild changes what ships in the release image, so it is reviewed by hand.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "pinDigests": true,
+      "automerge": false
+    },
+    {
+      "description": "The Go build image only decides how the binary is produced, and the image job fails if a new toolchain breaks it. The runtime base stays manual.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchDepNames": [
+        "golang"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "groupName": "go toolchain image",
+      "automerge": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": [
+      "dependencies",
+      "security"
+    ],
+    "schedule": [
+      "at any time"
+    ],
+    "automerge": true
+  },
+  "customManagers": [
+    {
+      "description": "SCANNER_IMAGE is a plain `docker run` argument, not a `uses:` reference, so the github-actions manager does not see it. It must keep moving with the SecObserve action pins next to it (docs/adr/0009-ci-cd-pipeline.md).",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "SCANNER_IMAGE:\\s+(?<depName>[^\\s:@]+):(?<currentValue>[^\\s@]+)@(?<currentDigest>sha256:[0-9a-f]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "description": "gosec is installed by a workflow `go install`, which no manager reads.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "GOSEC_VERSION:\\s+(?<currentValue>v[\\d.]+)"
+      ],
+      "depNameTemplate": "github.com/securego/gosec/v2",
+      "datasourceTemplate": "go"
+    }
+  ]
+}

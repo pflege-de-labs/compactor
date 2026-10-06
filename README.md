@@ -25,7 +25,7 @@ specific design decisions.
 ## Quick start
 
 ```sh
-go build ./...
+go build ./cmd/compactor
 cp config.example.yaml config.yaml   # edit: bucket, prefixes, encryption
 ./compactor rollup hourly --config config.yaml
 ```
@@ -41,6 +41,23 @@ Generate the man page or shell completions directly from the binary:
 compactor man > compactor.1
 compactor completions bash > compactor.bash
 ```
+
+## Container image and releases
+
+Images are published to `ghcr.io/pflege-de-labs/compactor` and signed
+keylessly with cosign; releases (`v*` tags) also ship binaries, SBOMs
+and a signed `checksums.txt`. Verify an image with:
+
+```sh
+cosign verify \
+  --certificate-identity-regexp '^https://github.com/pflege-de-labs/compactor/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/pflege-de-labs/compactor:<tag>
+```
+
+The image's entrypoint is `/compactor` with no default subcommand:
+run `listen` as a Deployment and `rollup hourly` as a CronJob. See
+[ADR 0009](docs/adr/0009-ci-cd-pipeline.md).
 
 ## Encryption
 

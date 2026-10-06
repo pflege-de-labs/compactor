@@ -41,7 +41,7 @@ func NewAgeCodec(recipients []string, identityFile string) (*AgeCodec, error) {
 	c := &AgeCodec{recipients: parsedRecipients}
 
 	if identityFile != "" {
-		f, err := os.Open(identityFile)
+		f, err := os.Open(identityFile) // #nosec G304 -- operator-configured identity file path
 		if err != nil {
 			return nil, fmt.Errorf("crypto/age: open identity file: %w", err)
 		}

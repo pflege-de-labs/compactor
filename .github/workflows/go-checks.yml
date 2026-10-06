@@ -1,0 +1,104 @@
+name: Go checks
+
+# Called by ci.yml on every PR and main push, and by release.yml on a tag, so the gate cannot drift between them.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  GOSEC_VERSION: v2.29.0
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # go.mod rather than "stable", so CI builds with the toolchain the Dockerfile pins.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Test
+        run: go test ./... -coverprofile=coverage.out
+
+      # Reported, not gated: see docs/adr/0009-ci-cd-pipeline.md.
+      - name: Report coverage
+        run: |
+          total=$(go tool cover -func=coverage.out | tail -n 1 | awk '{print $NF}')
+          echo "Total coverage: ${total}"
+          {
+            echo "### Coverage"
+            echo
+            echo "Total statement coverage: **${total}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check go.mod and go.sum are tidy
+        run: |
+          go mod tidy
+          if ! git diff --quiet -- go.mod go.sum; then
+            echo "::error::go.mod/go.sum are not tidy - run 'go mod tidy'"
+            git --no-pager diff -- go.mod go.sum
+            exit 1
+          fi
+
+      # -I skips the man page's .TH line, which embeds the generation date and would fail this daily.
+      - name: Check the generated man page and completions are current
+        run: |
+          go generate ./...
+          if ! git diff --exit-code -I '^\.TH ' -- docs/man docs/completions; then
+            echo "::error::docs/man or docs/completions are stale - run 'go generate ./...' and commit the result"
+            exit 1
+          fi
+
+  vuln-check:
+    name: Vulnerability Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # @latest on purpose: a vulnerability scanner pinned to an old version misses new advisories.
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  gosec:
+    name: Security Scan (gosec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Built with the repo's toolchain; the gosec Docker action bundles its own Go, which can lag go.mod.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Install gosec
+        run: go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
+
+      - name: Run gosec
+        run: gosec -quiet ./...
