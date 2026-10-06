@@ -1,0 +1,4 @@
+# Listener plus the two promotion CronJobs, the chart's defaults.
+config:
+  s3:
+    bucket: events

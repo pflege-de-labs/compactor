@@ -37,6 +37,20 @@ Coverage is reported in the job summary but not gated yet (see
 from this repository also build and sign a container image; see the
 ADR for how images, tags and releases work.
 
+## Helm chart
+
+```sh
+helm lint charts/compactor --values charts/compactor/ci/default-values.yaml
+helm template ci charts/compactor --values charts/compactor/ci/statefulset-values.yaml
+```
+
+CI lints and renders every `charts/compactor/ci/*-values.yaml` and
+asserts what each renders (the `chart` job in `ci.yml`), so add a values
+file there for any new deployment shape. The chart is versioned
+independently: raising `version` in `charts/compactor/Chart.yaml` on `main`
+publishes it to `ghcr.io/pflege-de-labs/charts` (keep `appVersion`
+pointing at a released image).
+
 ## Releasing
 
 Cut a release by pushing a `vX.Y.Z` tag on `main`; the `Release`

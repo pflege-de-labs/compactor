@@ -35,6 +35,12 @@ stale (the man page's `.TH` date line is ignored). The `gosec` check
 is clean; fix real findings and annotate intentional ones with
 `#nosec Gxxx -- <reason>`.
 
+Chart changes (`charts/compactor`) need `helm lint` and a render of every
+`ci/*-values.yaml`; when you add a value or template, add or extend a
+`ci/` values file and, if behavior is non-obvious, an assertion in the
+`chart` job of `.github/workflows/ci.yml`. Config keys in the chart's
+`config:` tree mirror `config.example.yaml` (dashed keys).
+
 Don't hand-bump GitHub Action pins, the Dockerfile base images or
 Go dependencies purely for freshness: Renovate owns them. CI/CD
 decisions are in `docs/adr/0009-ci-cd-pipeline.md`.

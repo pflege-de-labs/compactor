@@ -81,6 +81,6 @@ re-deriving it, and notes only where compactor differs.
   the tag contains.
 - Coverage can regress unnoticed until the gate exists; the summary line
   makes that visible but not blocking.
-- The Helm chart (`charts/compactor`) is out of scope here and will get
-  its own publishing workflow when the chart lands.
+- The Helm chart is published by its own workflow and linted/rendered by
+  a `chart` job in `ci.yml`; see [ADR 0010](0010-helm-chart.md).
 - Action pins are Renovate-managed; do not bump them by hand.

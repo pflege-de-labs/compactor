@@ -156,6 +156,12 @@ and signs the release image and publishes signed binaries with SBOMs.
 Renovate keeps dependencies and Action pins current. See
 [ADR 0009](adr/0009-ci-cd-pipeline.md).
 
+## Deployment
+
+`charts/compactor` deploys the listener (Deployment or StatefulSet) and/or
+CronJobs for scheduled rollups and week/month promotion, independently
+toggled. See [ADR 0010](adr/0010-helm-chart.md) and the chart's README.
+
 ## Deferred (see plan / ADRs for detail)
 
 - PGP / static-symmetric-key `crypto.Codec` backends.
@@ -168,4 +174,6 @@ Renovate keeps dependencies and Action pins current. See
 - Dead-letter handling for malformed source events (currently: log,
   skip, mark processed so it isn't retried forever).
 - A coverage gate (CI reports total coverage but doesn't enforce a
-  threshold yet, see ADR 0009) and the Helm chart publishing workflow.
+  threshold yet, see ADR 0009).
+- Promoting a trailing window of weeks/months rather than only the
+  current one (see ADR 0010's Consequences).

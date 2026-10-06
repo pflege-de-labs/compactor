@@ -1,0 +1,234 @@
+# Default values for compactor.
+#
+# compactor rolls up per-event JSON/JSONL objects in an S3-compatible bucket
+# into day/week/month JSONL files. This chart can run it as:
+#   - an event-driven listener (`listen`, a Deployment or StatefulSet) that
+#     reconciles a day's rollup shortly after a bucket notification arrives, and/or
+#   - CronJobs (`cronJobs.*`) for scheduled day rollups and week/month promotion.
+# The two are independent: week/month promotion has no event trigger, so the
+# defaults run the listener plus the two promotion CronJobs.
+
+image:
+  repository: ghcr.io/pflege-de-labs/compactor
+  pullPolicy: IfNotPresent
+  # Overrides the image tag, whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # compactor never talks to the Kubernetes API, so the token is not mounted by default.
+  automount: false
+  # Annotate for cloud workload identity, e.g. eks.amazonaws.com/role-arn.
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+# The image runs as root unless told otherwise; run as the distroless "nonroot" uid.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Resources for the listener. CronJobs use cronJobs.resources.
+resources: {}
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # limits:
+  #   memory: 512Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ---------------------------------------------------------------------------
+# compactor configuration, rendered into config.yaml (mounted at
+# /etc/compactor/config.yaml and passed as --config). Keys are the dashed YAML
+# keys documented in config.example.yaml; every key is optional except
+# s3.bucket. `listen.http-addr` is derived from `listen.port` below, and
+# `encryption.age.identity-file` from `ageIdentity`, so don't set those here.
+# ---------------------------------------------------------------------------
+config:
+  s3:
+    # Empty selects AWS; set for MinIO, e.g. http://minio.minio.svc:9000
+    endpoint: ""
+    region: us-east-1
+    bucket: ""
+    # true for most MinIO deployments.
+    use-path-style: false
+  paths:
+    # Base prefix under which year/month/day raw events live (empty = bucket root).
+    source-prefix: ""
+    rollup-prefix: rollups
+    checkpoint-prefix: checkpoints
+  encryption:
+    # Rollup OUTPUT scheme: none | age. Source objects are detected independently.
+    scheme: none
+    age:
+      # age1... public keys; required when scheme is age.
+      recipients: []
+  rollup:
+    # Also re-check this many prior days on every `rollup hourly` run.
+    straggler-days: 1
+  materialize:
+    cache-ttl: 1h
+  listen:
+    nats:
+      url: nats://nats.nats.svc:4222
+      # JetStream stream MinIO's NATS notification target publishes to.
+      stream: minio-events
+      subject: minio.events.>
+      # Durable consumer; replicas share it, so notifications are spread across them.
+      consumer: compactor
+    # Coalesce a burst of notifications for one day into a single reconcile.
+    debounce: 5s
+  logging:
+    level: info
+    # text | json
+    format: json
+
+# Name of a ConfigMap you manage that holds `config.yaml`. When set, the
+# `config` block above is ignored and no ConfigMap is rendered.
+existingConfig: ""
+
+# S3 credentials. Leave all of this empty to rely on ambient identity (IRSA /
+# workload identity / instance profile) via serviceAccount.annotations.
+credentials:
+  # Secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, injected as env.
+  existingSecret: ""
+  # Or let the chart render a Secret from these (prefer existingSecret in production).
+  accessKeyId: ""
+  secretAccessKey: ""
+
+# age identity (private key) used to decrypt age-encrypted rollups and sources.
+# Required when reading age data or when `compactor materialize` is run in the pod.
+ageIdentity:
+  # Secret holding the identity file; mounted read-only at /etc/compactor/age.
+  existingSecret: ""
+  key: identity.txt
+
+# Hex-encoded AES key enabling the source-decode-only aes-ctr-gzip codec
+# (COMPACTOR_SOURCE_AES_CTR_GZIP_KEY). Key material never goes in `config`.
+sourceAesCtrGzipKey:
+  existingSecret: ""
+  key: COMPACTOR_SOURCE_AES_CTR_GZIP_KEY
+
+# Metrics are OpenTelemetry, pushed by OTLP (see docs/adr/0007 in the compactor repo).
+otel:
+  serviceName: compactor
+  # otlp | prometheus | console | none
+  exporter: otlp
+  # e.g. http://alloy.monitoring.svc:4318; empty uses the OTel default (localhost).
+  endpoint: ""
+  # grpc | http/protobuf; empty uses the OTel default.
+  protocol: ""
+
+# Extra container env entries (full Kubernetes EnvVar objects) and envFrom sources.
+extraEnv: []
+  # - name: OTEL_RESOURCE_ATTRIBUTES
+  #   value: deployment.environment=prod
+extraEnvFrom: []
+
+volumes: []
+volumeMounts: []
+
+# ---------------------------------------------------------------------------
+# Listener: `compactor listen`.
+# ---------------------------------------------------------------------------
+listen:
+  enabled: true
+  # deployment | statefulset. A StatefulSet gives pods stable names and a
+  # headless Service; the durable JetStream consumer is shared either way.
+  kind: deployment
+  replicaCount: 1
+  # Port for the /healthz and /readyz probes (rendered into config as listen.http-addr).
+  port: 8080
+  # Extra arguments appended after `listen`.
+  args: []
+  terminationGracePeriodSeconds: 30
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /readyz
+      port: http
+  # Applied to the listener only; ignored when replicaCount is 1 unless enabled.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1
+
+# ---------------------------------------------------------------------------
+# CronJobs: scheduled `compactor rollup ...` runs.
+# ---------------------------------------------------------------------------
+cronJobs:
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 1
+  # Delete finished Jobs after this many seconds; empty keeps them until the history limits prune them.
+  ttlSecondsAfterFinished: ""
+  # Resources for every CronJob container.
+  resources: {}
+
+  # `compactor rollup hourly`: incremental day rollup (today plus
+  # rollup.straggler-days). Redundant while the listener runs; enable it when
+  # `listen.enabled` is false, or as a safety net that catches missed notifications.
+  hourly:
+    enabled: false
+    schedule: "7 * * * *"
+    suspend: false
+    # Extra arguments, e.g. ["--day=2026-10-01"].
+    args: []
+
+  # `compactor rollup promote-week`: rebuild the current ISO week's rollup from
+  # its day rollups. A no-op when nothing changed.
+  promoteWeek:
+    enabled: true
+    schedule: "30 3 * * *"
+    suspend: false
+    args: []
+
+  # `compactor rollup promote-month`: rebuild the current month's rollup from its weeks.
+  promoteMonth:
+    enabled: true
+    schedule: "45 3 * * *"
+    suspend: false
+    args: []
+
+# ---------------------------------------------------------------------------
+# Optional NetworkPolicy for every compactor pod. When enabled all ingress is
+# denied (probes come from the kubelet) and egress is limited to DNS plus the
+# rules below; you must allow S3, NATS and the OTLP collector yourself.
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: false
+  allowDNS: true
+  # Full NetworkPolicyEgressRule objects.
+  egress: []
+    # - to:
+    #     - namespaceSelector:
+    #         matchLabels:
+    #           kubernetes.io/metadata.name: nats
+    #   ports:
+    #     - port: 4222
+    #       protocol: TCP
