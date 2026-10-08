@@ -21,7 +21,7 @@ gofmt -l .          # should print nothing
 go test ./...
 ```
 
-CI (`.github/workflows/go-checks.yml`) runs those plus the checks
+CI (the shared `go-checks` workflow, called from `ci.yml`) runs those plus the checks
 below on every PR and `main` push, so reproduce them locally before
 opening a PR:
 
@@ -45,7 +45,7 @@ helm template ci charts/compactor --values charts/compactor/ci/statefulset-value
 ```
 
 CI lints and renders every `charts/compactor/ci/*-values.yaml` and
-asserts what each renders (the `chart` job in `ci.yml`), so add a values
+asserts what each renders (`scripts/check-chart-render.sh`), so add a values
 file there for any new deployment shape. The chart is versioned
 independently: raising `version` in `charts/compactor/Chart.yaml` on `main`
 publishes it to `ghcr.io/pflege-de-labs/charts` (keep `appVersion`

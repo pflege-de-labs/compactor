@@ -46,14 +46,25 @@ compactor completions bash > compactor.bash
 
 Images are published to `ghcr.io/pflege-de-labs/compactor` and signed
 keylessly with cosign; releases (`v*` tags) also ship binaries, SBOMs
-and a signed `checksums.txt`. Verify an image with:
+and a signed `checksums.txt`. They are signed by the shared
+[pflege-de-labs/github-workflows](https://github.com/pflege-de-labs/github-workflows),
+so verify a release image against that workflow and pin compactor as the
+repository it ran for:
 
 ```sh
 cosign verify \
-  --certificate-identity-regexp '^https://github.com/pflege-de-labs/compactor/' \
+  --certificate-identity-regexp '^https://github\.com/pflege-de-labs/github-workflows/\.github/workflows/image-release\.yml@' \
+  --certificate-github-workflow-repository pflege-de-labs/compactor \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ghcr.io/pflege-de-labs/compactor:<tag>
 ```
+
+For a CI image, put `image-build.yml` in the identity instead; for the release
+binaries, verify `checksums.txt` with `cosign verify-blob --bundle checksums.txt.bundle`
+and `go-binaries.yml`. v0.1.0 and earlier were
+signed by compactor's own workflows: verify those with
+`--certificate-identity-regexp '^https://github.com/pflege-de-labs/compactor/'`
+instead.
 
 The image's entrypoint is `/compactor` with no default subcommand:
 run `listen` as a Deployment and `rollup hourly` as a CronJob. See
