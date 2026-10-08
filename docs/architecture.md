@@ -151,10 +151,11 @@ It's still constructed exactly once and shared if a real command's
 ## CI/CD
 
 GitHub Actions builds and cosign-signs a container image per commit
-(gated on a shared `go-checks.yml`), and a `v*` tag rebuilds, re-gates
+(gated on the Go checks), and a `v*` tag rebuilds, re-gates
 and signs the release image and publishes signed binaries with SBOMs.
+The jobs are the shared pflege-de-labs reusable workflows.
 Renovate keeps dependencies and Action pins current. See
-[ADR 0009](adr/0009-ci-cd-pipeline.md).
+[ADR 0009](adr/0009-ci-cd-pipeline.md) and [ADR 0011](adr/0011-shared-reusable-workflows.md).
 
 ## Deployment
 

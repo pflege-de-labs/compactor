@@ -7,283 +7,49 @@ on:
 permissions:
   contents: read
 
-env:
-  IMAGE: ghcr.io/${{ github.repository }}
-  # Run directly rather than via upstream's upload_sbom action, whose entrypoint cannot report failure (ADR 0009).
-  SCANNER_IMAGE: ghcr.io/secobserve/secobserve-scanners:2026_08@sha256:7dd952f02a9a8262b61399bb65abdeea9c8b5b8628aa4788ba7d411d198931ab
-
+# The jobs are shared with the other pflege-de-labs repositories (ADR 0011).
 jobs:
-  # Cheap and first, so a misplaced tag fails in seconds rather than after the full build.
   guard:
-    name: Tag is on main
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Refuse a tag that is not reachable from main
-        run: |
-          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::${GITHUB_REF_NAME} (${GITHUB_SHA}) is not reachable from main - cut releases from main"
-            exit 1
-          fi
-          echo "${GITHUB_REF_NAME} is reachable from main"
+    uses: pflege-de-labs/github-workflows/.github/workflows/release-guard.yml@d5b9ce5cc098cf3239e796f49d742a48140130c0 # v1.0.0
 
   # The release rebuilds its artifacts, so the tagged commit is gated here rather than by main's last CI run.
   verify:
     needs: guard
-    uses: ./.github/workflows/go-checks.yml
-    permissions:
-      contents: read
+    uses: pflege-de-labs/github-workflows/.github/workflows/go-checks.yml@d5b9ce5cc098cf3239e796f49d742a48140130c0 # v1.0.0
+    with:
+      generate-command: go generate ./...
+      generate-diff-args: "-I '^\\.TH ' -- docs/man docs/completions"
 
   image:
-    name: Image
     needs: verify
-    runs-on: ubuntu-latest
+    uses: pflege-de-labs/github-workflows/.github/workflows/image-release.yml@d5b9ce5cc098cf3239e796f49d742a48140130c0 # v1.0.0
     permissions:
       contents: read
       packages: write
       id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
+    with:
+      version-check: true
 
-      # :latest follows the highest stable tag, not "tip of main", which can move between the tag push and this run (ADR 0009).
-      - name: Decide whether this release owns :latest
-        id: latest
-        run: |
-          case "$GITHUB_REF_NAME" in
-            *-*)
-              echo "$GITHUB_REF_NAME is a pre-release, leaving :latest alone"
-              echo "owns=false" >> "$GITHUB_OUTPUT"
-              exit 0
-              ;;
-          esac
-          newest=$(git tag --list 'v*' --sort=-v:refname | grep -v -- '-' | head -n 1)
-          if [ "$newest" = "$GITHUB_REF_NAME" ]; then
-            echo "$GITHUB_REF_NAME is the newest stable tag, it owns :latest"
-            echo "owns=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "$newest is newer than $GITHUB_REF_NAME, leaving :latest alone"
-            echo "owns=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Collect release metadata
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: index,manifest
-        with:
-          images: ${{ env.IMAGE }}
-          flavor: latest=${{ steps.latest.outputs.owns }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-
-      # One build feeds every release tag (one digest); cache-from only, so a release never evicts CI's cache entries.
-      - name: Build and push the release image
-        id: build
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-            VERSION=${{ github.ref_name }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          sbom: true
-          provenance: mode=max
-          cache-from: type=gha
-
-      # -X silently no-ops on a wrong symbol path, so an image reporting "dev" would otherwise ship unnoticed.
-      - name: Check the version was linked in
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          got=$(docker run --rm "${IMAGE}@${DIGEST}" --version)
-          case "$got" in
-            *"${GITHUB_REF_NAME}"*) echo "version reports ${got}" ;;
-            *) echo "::error::image reports '${got}', expected ${GITHUB_REF_NAME}"; exit 1 ;;
-          esac
-
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
-      # Keyless (OIDC identity of this workflow); signing by digest covers every tag.
-      - name: Sign the image
-        run: cosign sign --yes "${IMAGE}@${DIGEST}"
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-
-      - name: Verify the signature and the attestations
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          cosign verify \
-            --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/" \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            "${IMAGE}@${DIGEST}" > /dev/null
-          # buildx attaches SBOM and provenance as in-toto attestations on the index, so assert them here, not via cosign.
-          for kind in SBOM Provenance; do
-            if ! docker buildx imagetools inspect "${IMAGE}@${DIGEST}" \
-              --format "{{ json .${kind} }}" | grep -q .; then
-              echo "::error::the image carries no ${kind} attestation"
-              exit 1
-            fi
-            echo "${kind} attestation present"
-          done
-          {
-            echo "### Image"
-            echo
-            echo '```'
-            echo "${IMAGE}@${DIGEST}"
-            echo '```'
-            echo
-            echo "Tags: ${{ steps.meta.outputs.tags }}" | tr '\n' ' '
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # Captures the attestation already proven present above; buildx keys a multi-platform .SBOM by platform, SecObserve wants a bare SPDX document.
-      - name: Extract the image's SBOM attestations to files
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          docker buildx imagetools inspect "${IMAGE}@${DIGEST}" \
-            --format '{{ json .SBOM }}' > sbom-raw.json
-          for platform in linux/amd64 linux/arm64; do
-            out="sbom-$(echo "$platform" | tr '/' '-').json"
-            jq --arg p "$platform" '.[$p].SPDX' sbom-raw.json > "$out"
-            if ! jq -e 'has("SPDXID") and has("spdxVersion")' "$out" > /dev/null; then
-              echo "::error::${out} is not a bare SPDX document"
-              exit 1
-            fi
-          done
-
-      # One upload per platform: SecObserve keys a vulnerability check on the file name, so both land.
-      - name: Upload the SBOMs to SecObserve
-        id: sbom_upload
-        continue-on-error: true
-        env:
-          SO_API_BASE_URL: https://webhooks.management.p4e.io/secobserve
-          SO_API_TOKEN: ${{ secrets.SO_API_TOKEN }}
-          SO_PRODUCT_NAME: compactor
-          SO_BRANCH_NAME: ${{ github.ref_name }}
-          SO_ORIGIN_SERVICE: compactor
-        run: |
-          for sbom in sbom-linux-*.json; do
-            docker run --rm -v "${PWD}:/workspace" -w /workspace \
-              -e SO_API_BASE_URL -e SO_API_TOKEN -e SO_PRODUCT_NAME \
-              -e SO_BRANCH_NAME -e SO_ORIGIN_SERVICE -e SO_FILE_NAME="$sbom" \
-              --entrypoint /entrypoints/entrypoint_upload_sbom.sh \
-              "$SCANNER_IMAGE"
-          done
-
-      # Scans the exact digest just signed and verified; the branch name is the release tag, so findings attribute to the release they shipped in.
-      - name: Scan the image with Trivy and upload results to SecObserve
-        id: trivy_scan
-        continue-on-error: true
-        uses: SecObserve/secobserve_actions_templates/actions/SCA/trivy_image@0a0f7d0981982a589f2a11c3f05c8e1c628fbd79 # v2026_08
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        with:
-          target: ${{ env.IMAGE }}@${{ env.DIGEST }}
-          report_name: trivy-image-report.cdx.json
-          so_api_base_url: https://webhooks.management.p4e.io/secobserve
-          so_api_token: ${{ secrets.SO_API_TOKEN }}
-          so_product_name: compactor
-          so_branch_name: ${{ github.ref_name }}
-          so_origin_service: compactor
-          so_origin_docker_image_name_tag: ${{ env.IMAGE }}:${{ github.ref_name }}
-
-      # SecObserve is a findings tool, not a release gate: an outage there must not withhold an image that already built, signed and verified.
-      - name: Report the SecObserve upload outcome
-        if: ${{ !cancelled() }}
-        env:
-          SBOM_OUTCOME: ${{ steps.sbom_upload.outcome }}
-          TRIVY_OUTCOME: ${{ steps.trivy_scan.outcome }}
-        run: |
-          failed=""
-          if [ "$SBOM_OUTCOME" = "failure" ]; then failed="${failed} SBOM"; fi
-          if [ "$TRIVY_OUTCOME" = "failure" ]; then failed="${failed} Trivy"; fi
-          if [ -z "$failed" ]; then exit 0; fi
-          echo "::warning::SecObserve upload failed for:${failed} - see the step logs"
-          {
-            echo "> [!WARNING]"
-            echo "> SecObserve upload failed for:${failed}"
-          } >> "$GITHUB_STEP_SUMMARY"
+  secobserve:
+    needs: image
+    uses: pflege-de-labs/github-workflows/.github/workflows/secobserve-image.yml@d5b9ce5cc098cf3239e796f49d742a48140130c0 # v1.0.0
+    permissions:
+      contents: read
+      packages: read
+    with:
+      image: ${{ needs.image.outputs.image }}
+      digest: ${{ needs.image.outputs.digest }}
+      tag: ${{ github.ref_name }}
+    secrets:
+      SO_API_TOKEN: ${{ secrets.SO_API_TOKEN }}
 
   # needs: image, so the GitHub release people see is not created until the image it documents is published and verified.
   binaries:
-    name: Binaries
-    needs: [verify, image]
-    runs-on: ubuntu-latest
+    needs: image
+    uses: pflege-de-labs/github-workflows/.github/workflows/go-binaries.yml@d5b9ce5cc098cf3239e796f49d742a48140130c0 # v1.0.0
     permissions:
       contents: write
       id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Build release binaries
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          mkdir -p dist
-          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-            GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 \
-              go build -trimpath -ldflags "-s -w -X main.version=$VERSION" \
-              -o "dist/compactor-${target%/*}-${target#*/}" ./cmd/compactor
-          done
-
-      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-
-      # syft reads the Go build info the linker embeds (not stripped by -s -w), so the SBOM lists the exact module versions.
-      - name: Generate an SBOM per binary
-        run: |
-          for binary in dist/compactor-*; do
-            case "$binary" in *.spdx.json) continue ;; esac
-            syft scan "file:${binary}" -o spdx-json > "${binary}.spdx.json"
-          done
-
-      # Checksums cover the binaries and their SBOMs, so signing this one file authenticates every release asset.
-      - name: Checksum the assets
-        run: (cd dist && sha256sum compactor-* > checksums.txt)
-
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
-      # A bundle carries signature and certificate in one file, which cosign v3 requires of sign-blob.
-      - name: Sign the checksums
-        run: cosign sign-blob --yes --bundle dist/checksums.txt.bundle dist/checksums.txt
-
-      - name: Verify the signature
-        run: |
-          cosign verify-blob \
-            --bundle dist/checksums.txt.bundle \
-            --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/" \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            dist/checksums.txt
-
-      # A suffixed tag is a pre-release, the same predicate the image job uses for :latest, so the two never disagree.
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          make_latest: ${{ !contains(github.ref_name, '-') }}
-          files: dist/*
+    with:
+      name: compactor
+      package: ./cmd/compactor

@@ -62,5 +62,5 @@ egress to DNS plus `networkPolicy.egress`, so you must allow S3, NATS and the OT
 
 ## Testing
 
-`ci/*-values.yaml` are the deployment shapes CI lints and renders (see the `chart` job in
-`.github/workflows/ci.yml`, which also asserts what each one produces).
+`ci/*-values.yaml` are the deployment shapes CI lints and renders; `scripts/check-chart-render.sh`
+asserts what each one produces.

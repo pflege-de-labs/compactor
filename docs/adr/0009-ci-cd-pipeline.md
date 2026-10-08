@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. Amended by [ADR 0011](0011-shared-reusable-workflows.md).
 
 ## Context
 
