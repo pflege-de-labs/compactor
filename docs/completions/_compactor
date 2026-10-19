@@ -21,7 +21,8 @@ _compactor_rollup_promote_month() {
 _compactor_rollup_backfill() {
     _arguments -S -C -s\
         "--from=[First day to roll up (YYYY-MM-DD).]:first day to roll up (yyyy-mm-dd).:" \
-        "--to=[Last day to roll up (YYYY-MM-DD), inclusive.]:last day to roll up (yyyy-mm-dd), inclusive.:"
+        "--to=[Last day to roll up (YYYY-MM-DD), inclusive.]:last day to roll up (yyyy-mm-dd), inclusive.:" \
+        "--no-promote[Only roll up days; skip week and month promotion, which holds a whole week or month in memory.]"
 }
 
 _compactor_rollup() {

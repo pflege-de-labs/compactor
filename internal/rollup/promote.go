@@ -1,7 +1,6 @@
 package rollup
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -70,7 +69,7 @@ func (e *Engine) RunPromoteWeek(ctx context.Context, isoYear, isoWeek int) (Resu
 		return Result{}, fmt.Errorf("rollup: week %s: %w", weekKeyStr, err)
 	}
 
-	var combined bytes.Buffer
+	var combined chunkBuffer
 	for _, d := range days {
 		dayCP, _, err := e.Checkpoints.LoadDay(ctx, d)
 		if err != nil {
@@ -158,7 +157,7 @@ func (e *Engine) RunPromoteMonth(ctx context.Context, year int, month time.Month
 		return Result{}, fmt.Errorf("rollup: month %s: %w", monthKeyStr, err)
 	}
 
-	var combined bytes.Buffer
+	var combined chunkBuffer
 	for _, w := range weeks {
 		weekCP, _, err := e.Checkpoints.LoadWeek(ctx, w.year, w.week)
 		if err != nil {
@@ -189,7 +188,7 @@ func (e *Engine) RunPromoteMonth(ctx context.Context, year int, month time.Month
 	return Result{RollupKey: rollupKey, RollupETag: meta.ETag}, nil
 }
 
-func (e *Engine) decryptChildInto(ctx context.Context, codec crypto.Codec, key string, into *bytes.Buffer) error {
+func (e *Engine) decryptChildInto(ctx context.Context, codec crypto.Codec, key string, into *chunkBuffer) error {
 	body, _, err := e.Store.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
@@ -209,7 +208,7 @@ func (e *Engine) decryptChildInto(ctx context.Context, codec crypto.Codec, key s
 // encryptAndPutRollup encrypts plaintext and writes it to key,
 // conditioned on the rollup already existing (hadPrior=true, via
 // If-Match against the object's current ETag) or not (create-only).
-func (e *Engine) encryptAndPutRollup(ctx context.Context, codec crypto.Codec, key string, plaintext *bytes.Buffer, priorETag string) (storage.ObjectMeta, error) {
+func (e *Engine) encryptAndPutRollup(ctx context.Context, codec crypto.Codec, key string, plaintext *chunkBuffer, priorETag string) (storage.ObjectMeta, error) {
 	body, err := encode(ctx, codec, plaintext)
 	if err != nil {
 		return storage.ObjectMeta{}, fmt.Errorf("rollup: encrypt %s: %w", key, err)

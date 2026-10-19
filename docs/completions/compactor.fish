@@ -47,6 +47,7 @@ complete -c compactor -f -n '__fish_seen_subcommand_from promote-month' -x -l mo
 complete -c compactor -f -n '__fish_use_subcommand' -a backfill -d 'Roll up a range of past days, then promote the weeks and months they touch.'
 complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -x -l from -d "First day to roll up (YYYY-MM-DD)."
 complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -x -l to -d "Last day to roll up (YYYY-MM-DD), inclusive."
+complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -l no-promote -d "Only roll up days; skip week and month promotion, which holds a whole week or month in memory."
 
 # materialize
 complete -c compactor -f -n '__fish_use_subcommand' -a materialize -d 'Decrypt a rollup object into a local scratch file for DuckDB.'

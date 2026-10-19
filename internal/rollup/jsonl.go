@@ -3,6 +3,7 @@ package rollup
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 )
 
 // AppendJSONLines decodes raw as either a single JSON document (which
@@ -19,7 +20,7 @@ import (
 // doesn't cost the rest of it — a producer can emit up to (e.g.) 1000
 // events per object, and losing 999 good ones to 1 bad one would be a
 // disproportionate failure mode.
-func AppendJSONLines(buf *bytes.Buffer, raw []byte) (appended, skipped int) {
+func AppendJSONLines(buf io.Writer, raw []byte) (appended, skipped int) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
 		return 0, 0
@@ -28,8 +29,8 @@ func AppendJSONLines(buf *bytes.Buffer, raw []byte) (appended, skipped int) {
 	if json.Valid(trimmed) {
 		var compacted bytes.Buffer
 		if err := json.Compact(&compacted, trimmed); err == nil {
+			compacted.WriteByte('\n')
 			buf.Write(compacted.Bytes())
-			buf.WriteByte('\n')
 			return 1, 0
 		}
 	}
@@ -45,8 +46,8 @@ func AppendJSONLines(buf *bytes.Buffer, raw []byte) (appended, skipped int) {
 			skipped++
 			continue
 		}
+		compacted.WriteByte('\n')
 		buf.Write(compacted.Bytes())
-		buf.WriteByte('\n')
 		appended++
 	}
 	return appended, skipped

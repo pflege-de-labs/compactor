@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"sort"
 	"time"
@@ -161,7 +162,7 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 	}
 	rollupKey := DayRollupKey(e.RollupPrefix, day, outputCodec)
 
-	var plaintext bytes.Buffer
+	var plaintext chunkBuffer
 	existingETag := ""
 	if hadExisting {
 		existingCodec, err := e.Registry.MustFor(existingScheme)
@@ -267,15 +268,15 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 }
 
 // encode returns the rollup body; plaintext output skips the codec's copy, which doubled peak memory on large days.
-func encode(ctx context.Context, codec crypto.Codec, plaintext *bytes.Buffer) (*bytes.Buffer, error) {
+func encode(ctx context.Context, codec crypto.Codec, plaintext *chunkBuffer) (io.Reader, error) {
 	if codec.Scheme() == crypto.SchemeNone {
-		return plaintext, nil
+		return plaintext.Reader(), nil
 	}
-	var out bytes.Buffer
-	if err := codec.Encrypt(ctx, &out, plaintext); err != nil {
+	var out chunkBuffer
+	if err := codec.Encrypt(ctx, &out, plaintext.Reader()); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out.Reader(), nil
 }
 
 func joinPrefix(a, b string) string {

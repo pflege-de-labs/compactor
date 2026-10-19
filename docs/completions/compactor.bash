@@ -47,7 +47,7 @@ _compactor_completions() {
       while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--output -o")" -- "$cur")
       ;;
     'rollup backfill'*)
-      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--from --to")" -- "$cur")
+      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--from --to --no-promote")" -- "$cur")
       ;;
     'rollup hourly'*)
       while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--day")" -- "$cur")

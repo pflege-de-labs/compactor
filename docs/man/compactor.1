@@ -208,7 +208,7 @@ Roll up source events into day/week/month JSONL\&.
 .TP
 \fBCOMMANDS\fP
 .RS 4
-\fBrollup backfill --from=STRING --to=STRING\fP
+\fBrollup backfill --from=STRING --to=STRING [flags]\fP
 .RS 4
 Roll up a range of past days, then promote the weeks and months they touch\&.
 .RE
@@ -217,6 +217,9 @@ Roll up a range of past days, then promote the weeks and months they touch\&.
 .RS 4
 \fB--from=STRING\fP
 First day to roll up (YYYY-MM-DD)\&.
+.TP
+\fB--no-promote\fP
+Only roll up days; skip week and month promotion, which holds a whole week or month in memory\&.
 .TP
 \fB--to=STRING\fP
 Last day to roll up (YYYY-MM-DD), inclusive\&.
