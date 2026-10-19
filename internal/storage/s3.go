@@ -48,6 +48,9 @@ func NewS3Store(ctx context.Context, cfg S3Config) (*S3Store, error) {
 			o.BaseEndpoint = aws.String(cfg.Endpoint)
 		}
 		o.UsePathStyle = cfg.UsePathStyle
+		// S3-compatible backends (OpenStack) reject conditional PUTs carrying the SDK's default CRC32 trailer with 412.
+		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
 	})
 
 	return &S3Store{client: client, bucket: cfg.Bucket}, nil
