@@ -119,9 +119,15 @@ func (s *S3Store) GetRange(ctx context.Context, key string, n int64) ([]byte, er
 }
 
 func (s *S3Store) Put(ctx context.Context, key string, body io.Reader, opts PutOptions) (ObjectMeta, error) {
-	data, err := io.ReadAll(body)
-	if err != nil {
-		return ObjectMeta{}, err
+	// Reuse an in-memory buffer instead of copying it; rollups can be hundreds of MB.
+	var data []byte
+	if b, ok := body.(*bytes.Buffer); ok {
+		data = b.Bytes()
+	} else {
+		var err error
+		if data, err = io.ReadAll(body); err != nil {
+			return ObjectMeta{}, err
+		}
 	}
 
 	input := &s3.PutObjectInput{

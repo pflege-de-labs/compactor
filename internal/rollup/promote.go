@@ -210,8 +210,8 @@ func (e *Engine) decryptChildInto(ctx context.Context, codec crypto.Codec, key s
 // conditioned on the rollup already existing (hadPrior=true, via
 // If-Match against the object's current ETag) or not (create-only).
 func (e *Engine) encryptAndPutRollup(ctx context.Context, codec crypto.Codec, key string, plaintext *bytes.Buffer, priorETag string) (storage.ObjectMeta, error) {
-	var ciphertext bytes.Buffer
-	if err := codec.Encrypt(ctx, &ciphertext, plaintext); err != nil {
+	body, err := encode(ctx, codec, plaintext)
+	if err != nil {
 		return storage.ObjectMeta{}, fmt.Errorf("rollup: encrypt %s: %w", key, err)
 	}
 
@@ -230,7 +230,7 @@ func (e *Engine) encryptAndPutRollup(ctx context.Context, codec crypto.Codec, ke
 		putOpts.IfNoneMatch = "*"
 	}
 
-	meta, err := e.Store.Put(ctx, key, &ciphertext, putOpts)
+	meta, err := e.Store.Put(ctx, key, body, putOpts)
 	if err != nil {
 		if errors.Is(err, storage.ErrPreconditionFailed) {
 			e.logger().Warn("rollup write lost race, deferring to next scheduled run", "key", key)

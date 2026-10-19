@@ -85,6 +85,8 @@ range, already processed source objects are skipped.
 | `OTEL_METRICS_EXPORTER`, `OTEL_EXPORTER_OTLP_*`, `OTEL_RESOURCE_ATTRIBUTES`, … | OpenTelemetry metrics export, see [ADR 0007](adr/0007-otel-metrics-via-autoexport.md). Chart: `extraEnv`. |
 | `XDG_CONFIG_HOME` | Default `--config` location: `$XDG_CONFIG_HOME/compactor/config.yaml`. |
 | `XDG_CACHE_HOME` | Default `materialize --out`: `$XDG_CACHE_HOME/compactor/materialized`. |
+| `GOMEMLIMIT` | Fixed Go memory limit (e.g. `900MiB`); overrides `runtime.memory-limit-ratio`. |
+| `AUTOMEMLIMIT` | Overrides `runtime.memory-limit-ratio` (`0.0`–`1.0`), or `off` to disable it. |
 
 Some AWS SDK variables have no effect because compactor sets the value itself:
 

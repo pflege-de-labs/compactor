@@ -231,8 +231,8 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		return Result{SkippedBad: skippedBad, NoOp: true}, nil
 	}
 
-	var ciphertext bytes.Buffer
-	if err := outputCodec.Encrypt(ctx, &ciphertext, &plaintext); err != nil {
+	body, err := encode(ctx, outputCodec, &plaintext)
+	if err != nil {
 		return Result{}, fmt.Errorf("rollup: encrypt rollup %s: %w", rollupKey, err)
 	}
 
@@ -243,7 +243,7 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		putOpts.IfNoneMatch = "*"
 	}
 
-	meta, err := e.Store.Put(ctx, rollupKey, &ciphertext, putOpts)
+	meta, err := e.Store.Put(ctx, rollupKey, body, putOpts)
 	if err != nil {
 		if errors.Is(err, storage.ErrPreconditionFailed) {
 			log.Warn("rollup write lost race, deferring to next scheduled run", "key", rollupKey)
@@ -264,6 +264,18 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		RollupKey:     rollupKey,
 		RollupETag:    meta.ETag,
 	}, nil
+}
+
+// encode returns the rollup body; plaintext output skips the codec's copy, which doubled peak memory on large days.
+func encode(ctx context.Context, codec crypto.Codec, plaintext *bytes.Buffer) (*bytes.Buffer, error) {
+	if codec.Scheme() == crypto.SchemeNone {
+		return plaintext, nil
+	}
+	var out bytes.Buffer
+	if err := codec.Encrypt(ctx, &out, plaintext); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 func joinPrefix(a, b string) string {

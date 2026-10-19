@@ -25,6 +25,7 @@ complete -c compactor -f -x -l listen-http-addr -d "Address to serve /healthz an
 complete -c compactor -f -x -l listen-debounce -d "Coalesce a burst of notifications for one day into a single reconcile."
 complete -c compactor -f -xa 'debug info warn error' -l logging-level -d "Log level."
 complete -c compactor -f -xa 'text json' -l logging-format -d "Log format."
+complete -c compactor -f -x -l runtime-memory-limit-ratio -d "Set GOMEMLIMIT to this share of the cgroup memory limit, so GC runs before an OOM kill; 0 disables. The GOMEMLIMIT and AUTOMEMLIMIT env vars take precedence."
 complete -c compactor -f -l version -d "Print version and exit."
 
 # rollup

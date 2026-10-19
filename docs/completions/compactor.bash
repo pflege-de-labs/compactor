@@ -81,7 +81,7 @@ _compactor_completions() {
       ;;
 
     *)
-      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "rollup materialize checkpoint listen man completions --help -h --config --s3-endpoint --s3-region --s3-bucket --s3-use-path-style --s3-if-match --no-s3-if-match --paths-source-prefix --paths-rollup-prefix --paths-checkpoint-prefix --encryption-scheme --encryption-age-recipients --encryption-age-identity-file --rollup-straggler-days --rollup-week-start --materialize-cache-ttl --listen-nats-url --listen-nats-stream --listen-nats-subject --listen-nats-consumer --listen-http-addr --listen-debounce --logging-level --logging-format --version")" -- "$cur")
+      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "rollup materialize checkpoint listen man completions --help -h --config --s3-endpoint --s3-region --s3-bucket --s3-use-path-style --s3-if-match --no-s3-if-match --paths-source-prefix --paths-rollup-prefix --paths-checkpoint-prefix --encryption-scheme --encryption-age-recipients --encryption-age-identity-file --rollup-straggler-days --rollup-week-start --materialize-cache-ttl --listen-nats-url --listen-nats-stream --listen-nats-subject --listen-nats-consumer --listen-http-addr --listen-debounce --logging-level --logging-format --runtime-memory-limit-ratio --version")" -- "$cur")
       ;;
 esac
 

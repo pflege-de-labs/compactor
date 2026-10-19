@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/alecthomas/kong"
 
 	"github.com/pflege-de-labs/compactor/internal/checkpoint"
@@ -29,6 +30,7 @@ type CLI struct {
 	MaterializeCfg config.Materialize `embed:"" prefix:"materialize-"`
 	ListenConfig   config.Listen      `embed:"" prefix:"listen-"`
 	Logging        config.Logging     `embed:"" prefix:"logging-"`
+	Runtime        config.Runtime     `embed:"" prefix:"runtime-"`
 
 	Rollup      RollupCmd      `cmd:"" help:"Roll up source events into day/week/month JSONL."`
 	Materialize MaterializeCmd `cmd:"" help:"Decrypt a rollup object into a local scratch file for DuckDB."`
@@ -80,9 +82,13 @@ func Bootstrap(ctx context.Context, root *CLI) (*App, error) {
 		Materialize: root.MaterializeCfg,
 		Listen:      root.ListenConfig,
 		Logging:     root.Logging,
+		Runtime:     root.Runtime,
 	}
 
 	logger := newLogger(cfg.Logging)
+	if err := setMemoryLimit(cfg.Runtime, logger); err != nil {
+		return nil, err
+	}
 
 	store, err := storage.NewS3Store(ctx, storage.S3Config{
 		Endpoint:     cfg.S3.Endpoint,
@@ -175,4 +181,22 @@ func newLogger(cfg config.Logging) *slog.Logger {
 		handler = slog.NewTextHandler(os.Stderr, opts)
 	}
 	return slog.New(handler)
+}
+
+// setMemoryLimit derives GOMEMLIMIT from the cgroup limit; without it the GC lets the heap grow past a container limit.
+func setMemoryLimit(cfg config.Runtime, logger *slog.Logger) error {
+	if cfg.MemoryLimitRatio == 0 {
+		return nil
+	}
+	if cfg.MemoryLimitRatio < 0 || cfg.MemoryLimitRatio > 1 {
+		return fmt.Errorf("cli: runtime.memory-limit-ratio must be in [0, 1], got %v", cfg.MemoryLimitRatio)
+	}
+	limit, err := memlimit.Set(memlimit.WithRatio(cfg.MemoryLimitRatio), memlimit.WithProvider(memlimit.FromCgroup))
+	if err != nil {
+		// Outside a cgroup (e.g. a laptop) there is no limit to respect.
+		logger.Debug("memory limit not set", "error", err)
+		return nil
+	}
+	logger.Info("memory limit set", "gomemlimit_bytes", limit)
+	return nil
 }

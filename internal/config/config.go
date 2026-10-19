@@ -63,6 +63,11 @@ type Listen struct {
 	Debounce time.Duration `help:"Coalesce a burst of notifications for one day into a single reconcile." default:"5s"`
 }
 
+// Runtime tunes the Go runtime to the container compactor runs in.
+type Runtime struct {
+	MemoryLimitRatio float64 `name:"memory-limit-ratio" default:"0.9" help:"Set GOMEMLIMIT to this share of the cgroup memory limit, so GC runs before an OOM kill; 0 disables. The GOMEMLIMIT and AUTOMEMLIMIT env vars take precedence."`
+}
+
 type Logging struct {
 	Level  string `help:"Log level." enum:"debug,info,warn,error" default:"info"`
 	Format string `help:"Log format." enum:"text,json" default:"text"`
@@ -78,6 +83,7 @@ type Config struct {
 	Materialize Materialize
 	Listen      Listen
 	Logging     Logging
+	Runtime     Runtime
 }
 
 // DefaultPath returns $XDG_CONFIG_HOME/compactor/config.yaml, the

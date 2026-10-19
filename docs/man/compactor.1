@@ -63,6 +63,9 @@ Also re-check N prior days on every hourly run\&.
 \fB--rollup-week-start="monday"\fP
 Reserved; ISO 8601 (Monday-start) weeks are used today\&.
 .TP
+\fB--runtime-memory-limit-ratio=0\&.9\fP
+Set GOMEMLIMIT to this share of the cgroup memory limit, so GC runs before an OOM kill; 0 disables\&. The GOMEMLIMIT and AUTOMEMLIMIT env vars take precedence\&.
+.TP
 \fB--s3-bucket=STRING\fP
 Bucket name\&.
 .TP
