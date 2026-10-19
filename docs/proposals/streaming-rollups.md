@@ -1,7 +1,7 @@
 # Proposal: streaming rollups with bounded memory
 
-Status: proposal (research only, nothing implemented). Tracking issue: see
-the "feat: streaming rollups with bounded memory" issue.
+Status: proposal (research only, nothing implemented). Tracking issue:
+[#26](https://github.com/pflege-de-labs/compactor/issues/26).
 
 ## Summary
 
