@@ -45,6 +45,7 @@ type RollupCmd struct {
 	Hourly       RollupHourlyCmd       `cmd:"" help:"Incremental day rollup (current day + configured stragglers)."`
 	PromoteWeek  RollupPromoteWeekCmd  `cmd:"" help:"Rebuild a week rollup from its day rollups."`
 	PromoteMonth RollupPromoteMonthCmd `cmd:"" help:"Rebuild a month rollup from its week rollups."`
+	Backfill     RollupBackfillCmd     `cmd:"" help:"Roll up a range of past days, then promote the weeks and months they touch."`
 }
 
 // App holds the fully wired dependencies shared by every command,

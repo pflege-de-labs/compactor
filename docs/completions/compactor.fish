@@ -42,6 +42,11 @@ complete -c compactor -f -n '__fish_seen_subcommand_from promote-week' -x -l wee
 complete -c compactor -f -n '__fish_use_subcommand' -a promote-month -d 'Rebuild a month rollup from its week rollups.'
 complete -c compactor -f -n '__fish_seen_subcommand_from promote-month' -x -l month -d "Month to promote (YYYY-MM); default: current month."
 
+# rollup backfill
+complete -c compactor -f -n '__fish_use_subcommand' -a backfill -d 'Roll up a range of past days, then promote the weeks and months they touch.'
+complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -x -l from -d "First day to roll up (YYYY-MM-DD)."
+complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -x -l to -d "Last day to roll up (YYYY-MM-DD), inclusive."
+
 # materialize
 complete -c compactor -f -n '__fish_use_subcommand' -a materialize -d 'Decrypt a rollup object into a local scratch file for DuckDB.'
 complete -c compactor -f -n '__fish_seen_subcommand_from materialize' -x -l out -d "Scratch directory to write the decrypted file into (default: XDG cache dir)."

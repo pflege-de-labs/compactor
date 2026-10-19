@@ -21,6 +21,7 @@ listed [below](#environment-variables).
 | `rollup hourly [--day YYYY-MM-DD]` | Appends new source events to the day rollup. Without `--day`: today plus `--rollup-straggler-days` prior days. | hourly |
 | `rollup promote-week [--week YYYY-Www]` | Rebuilds a week rollup from its day rollups. Default: current ISO week. | daily |
 | `rollup promote-month [--month YYYY-MM]` | Rebuilds a month rollup from its week rollups. Default: current month. | daily |
+| `rollup backfill --from YYYY-MM-DD --to YYYY-MM-DD` | Runs the day rollup for every day in the range, then promotes every week and month it touches. Idempotent; rerun to pick up deferred days. | manual |
 | `listen` | Event-driven day rollups, serves `/healthz` and `/readyz` on `--listen-http-addr`. | Deployment |
 | `checkpoint show --day/--week/--month …` | Prints a checkpoint as JSON. | manual |
 | `checkpoint reset --day/--week/--month … --confirm` | Clears a checkpoint's tracking state. It does not delete the rollup. | manual |
@@ -53,8 +54,27 @@ without the right key:
    `checkpoint reset` leaves it in place, and the next create-only write would
    then fail with `precondition failed`.
 3. Run `compactor checkpoint reset --day YYYY-MM-DD --confirm`.
-4. Run `compactor rollup hourly --day YYYY-MM-DD`.
-5. Run `rollup promote-week` and `rollup promote-month` for the affected periods.
+4. Run `compactor rollup backfill --from YYYY-MM-DD --to YYYY-MM-DD` for the day.
+   It also rebuilds the affected week and month.
+
+### Backfilling history
+
+`rollup backfill` processes historical data in one run. The image has no shell,
+so run it as a one-off Job cloned from the release's hourly CronJob, which
+carries the config, credentials and resources:
+
+```sh
+kubectl -n compactor create job compactor-events-backfill \
+  --from=cronjob/compactor-events-hourly --dry-run=client -o yaml \
+| yq '.spec.template.spec.containers[0].args = ["--config=/etc/compactor/config.yaml", "rollup", "backfill", "--from=2026-01-01", "--to=2026-10-17"]' \
+| kubectl apply -f -
+kubectl -n compactor logs -f job/compactor-events-backfill
+```
+
+Keep `--to` before the hourly job's window (today minus `rollup.straggler-days`)
+so both never write the same day; with `s3.if-match: false` an overlap can lose
+an update. A failed or deferred day is safe to retry: rerun the Job with the same
+range, already processed source objects are skipped.
 
 ## Environment variables
 

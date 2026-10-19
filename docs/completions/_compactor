@@ -18,6 +18,12 @@ _compactor_rollup_promote_month() {
         "--month=[Month to promote (YYYY-MM); default: current month.]:month to promote (yyyy-mm); default: current month.:"
 }
 
+_compactor_rollup_backfill() {
+    _arguments -S -C -s\
+        "--from=[First day to roll up (YYYY-MM-DD).]:first day to roll up (yyyy-mm-dd).:" \
+        "--to=[Last day to roll up (YYYY-MM-DD), inclusive.]:last day to roll up (yyyy-mm-dd), inclusive.:"
+}
+
 _compactor_rollup() {
     local line state
     _arguments -S -C -s\
@@ -29,7 +35,8 @@ _compactor_rollup() {
             _values "compactor_rollup command" \
                 "hourly[Incremental day rollup (current day + configured stragglers).]" \
                 "promote-week[Rebuild a week rollup from its day rollups.]" \
-                "promote-month[Rebuild a month rollup from its week rollups.]"
+                "promote-month[Rebuild a month rollup from its week rollups.]" \
+                "backfill[Roll up a range of past days, then promote the weeks and months they touch.]"
             ;;
         args)
             case "$line[1]" in
@@ -39,6 +46,8 @@ _compactor_rollup() {
                     _compactor_rollup_promote_week;;
                 promote-month)
                     _compactor_rollup_promote_month;;
+                backfill)
+                    _compactor_rollup_backfill;;
             esac
             ;;
     esac

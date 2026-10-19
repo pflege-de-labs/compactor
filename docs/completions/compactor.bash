@@ -46,6 +46,9 @@ _compactor_completions() {
     'completions zsh'*)
       while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--output -o")" -- "$cur")
       ;;
+    'rollup backfill'*)
+      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--from --to")" -- "$cur")
+      ;;
     'rollup hourly'*)
       while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--day")" -- "$cur")
       ;;
@@ -62,7 +65,7 @@ _compactor_completions() {
       while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "")" -- "$cur")
       ;;
     'rollup'*)
-      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "hourly promote-week promote-month")" -- "$cur")
+      while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "hourly promote-week promote-month backfill")" -- "$cur")
       ;;
     'man'*)
       while read -r; do COMPREPLY+=("$REPLY"); done < <(compgen -W "$(_compactor_filter "--output -o")" -- "$cur")

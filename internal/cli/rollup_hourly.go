@@ -2,12 +2,10 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/pflege-de-labs/compactor/internal/rollup"
-	"github.com/pflege-de-labs/compactor/internal/storage"
 )
 
 type RollupHourlyCmd struct {
@@ -19,14 +17,18 @@ func (c *RollupHourlyCmd) Run(ctx context.Context, app *App) error {
 	if err != nil {
 		return err
 	}
+	return runDayRollups(ctx, app, days)
+}
 
+// runDayRollups rolls up each day in order; a deferred day (lost race, mixed scheme) is returned after the rest ran.
+func runDayRollups(ctx context.Context, app *App, days []time.Time) error {
 	var firstErr error
 	for _, day := range days {
 		start := time.Now()
 		result, err := app.Engine.RunHourlyDayRollup(ctx, day)
 		app.Metrics.RecordDayRollup(ctx, time.Since(start), result.ItemsAppended, result.SkippedBad, result.NoOp, err)
 		if err != nil {
-			if errors.Is(err, rollup.ErrMixedScheme) || errors.Is(err, storage.ErrPreconditionFailed) {
+			if deferrable(err) {
 				// Already logged by the engine; keep processing other days.
 				if firstErr == nil {
 					firstErr = err
