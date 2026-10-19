@@ -205,6 +205,20 @@ Roll up source events into day/week/month JSONL\&.
 .TP
 \fBCOMMANDS\fP
 .RS 4
+\fBrollup backfill --from=STRING --to=STRING\fP
+.RS 4
+Roll up a range of past days, then promote the weeks and months they touch\&.
+.RE
+.TP
+\fBOPTIONS\fP
+.RS 4
+\fB--from=STRING\fP
+First day to roll up (YYYY-MM-DD)\&.
+.TP
+\fB--to=STRING\fP
+Last day to roll up (YYYY-MM-DD), inclusive\&.
+.RE
+.TP
 \fBrollup hourly [flags]\fP
 .RS 4
 Incremental day rollup (current day + configured stragglers)\&.
