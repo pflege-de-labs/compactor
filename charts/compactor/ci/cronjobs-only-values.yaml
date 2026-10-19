@@ -6,7 +6,14 @@ config:
 listen:
   enabled: false
 cronJobs:
+  resources:
+    limits:
+      memory: 256Mi
   hourly:
     enabled: true
     args: ["--day=2026-10-01"]
+  promoteMonth:
+    resources:
+      limits:
+        memory: 2Gi
   ttlSecondsAfterFinished: 86400

@@ -27,6 +27,12 @@ after the last run before a boundary are not folded into the closing period; pas
 `cronJobs.promoteWeek.args: ["--week=2026-W40"]` or run the command once by hand to
 catch up.
 
+Each run holds the rollup it builds in memory (about 1.5x its uncompressed JSONL size),
+so a month needs far more than a day. `cronJobs.resources` applies to every CronJob;
+`cronJobs.<job>.resources` replaces it for one job, e.g. a larger memory limit for
+`promoteMonth`. Set the memory limit together with `config.runtime.memory-limit-ratio`
+so the GC works within it.
+
 ## Configuration
 
 `config` is rendered verbatim into `config.yaml` (mounted at `/etc/compactor` and passed
