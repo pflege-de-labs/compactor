@@ -96,12 +96,23 @@ following was verified on `origin/main` with a throwaway test that fails
 - **Week/month create:** `encryptAndPutRollup` with an empty `priorETag`
   has the same shape. This is inferred from the code, not tested.
 
-Fix, independent of streaming: if the rollup exists but its ETag
-differs from the checkpoint's `RollupETag` (including an empty one),
-rebuild the day from all source objects (`ProcessedKeys` plus new ones)
-instead of appending. For week/month, treat an existing object as prior.
-A rebuild from children is already idempotent. Every option below
-inherits this rule.
+Fix, independent of streaming: rebuild the day from all source objects
+(`ProcessedKeys` plus new ones) instead of appending, in two cases:
+
+- The rollup exists, but its ETag differs from the checkpoint's
+  `RollupETag`, including when that is empty.
+- The target key (`rollupKey`) differs from the checkpointed key and
+  already exists. This is the ADR 0008 none→age upgrade crash: the old
+  plain key still matches, but the new `.age` key would hit 412 forever.
+  HEAD the target key to detect it.
+
+For week/month, treat an existing object as prior. A rebuild from
+children is already idempotent.
+
+The rebuild assumes every source object is still present. compactor
+never deletes sources, but an expiry rule on the source prefix would
+turn the rebuild into data loss. Check this before the rebuild runs.
+Every option below inherits this rule.
 
 ## Options
 
@@ -134,9 +145,14 @@ writes into a part writer. The part writer buffers one part (16 MiB),
 then `UploadPart`s it. Week and month work the same way, with children
 streamed in order.
 
-- **Memory:** about (concurrency + 1) × part size. Measured: 16 MiB
-  parts, sequential, about 35 MiB heap and 52 MiB RSS. Rollup size does
-  not affect it (128 MiB and 800 MiB gave the same result).
+- **Memory:** about (concurrency + 1) × part size, plus the largest
+  single decoded source object. Source batches are ~700 KB today, but
+  `aesctrgzip.go:19` allows up to 256 MiB, and the `bytes.Buffer` at
+  `engine.go:208` grows by doubling. Measured: 16 MiB parts,
+  sequential, about 35 MiB heap and 52 MiB RSS. Rollup size does not
+  affect it (128 MiB and 800 MiB gave the same result). The prototype
+  used synthetic events and skipped source decode and
+  `AppendJSONLines`.
 - **Disk:** none.
 - **Requests:** Create, ⌈size / 16 MiB⌉ × UploadPart, Complete, plus a
   HEAD under ADR 0012. That is ~66 parts per day, ~460 per week and
@@ -276,7 +292,8 @@ part capped (e.g. 256 MiB plaintext).
      than 24 h at startup.
    - Add metrics for parts and aborted uploads.
    - Write an ADR.
-   - Pod memory can then drop to about 256 MiB.
+   - Size the pod for about 3 × part size plus the largest source
+     object (~700 KB today, 256 MiB worst case per the decode cap).
 3. **Decide on I/O with data from (b):** gzip inside rollups (pairs
    with #15: about 10x less storage and transfer), (d) part objects,
    or (c) if the output is `none`.
@@ -332,3 +349,5 @@ v1.114.3, the client options from `S3Store` (path style, checksums
    rollups are for.
 5. Can the bucket get a lifecycle rule, or must compactor sweep stale
    multipart uploads itself?
+6. What is the source retention? A rebuild after a crash (Finding)
+   needs every source object of the day still present.
