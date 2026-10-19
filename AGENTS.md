@@ -52,8 +52,9 @@ libraries (kong hooks/bindings, mango-kong, miekg/king, the NATS
 JetStream client) — this project's history includes real bugs (e.g. a
 `context.Context` binding that silently never worked) that only
 surfaced under an actual run, not `go build`/`go vet`. A local
-`nats-server -js` and a local MinIO are cheap to spin up for this; see
-`CONTRIBUTING.md`.
+`nats-server -js` and a local SILO (Pigsty's MinIO fork, a drop-in
+replacement now that MinIO publishes no open-source images) are cheap
+to spin up for this; see `CONTRIBUTING.md`.
 
 ## Conventions already established in this repo
 

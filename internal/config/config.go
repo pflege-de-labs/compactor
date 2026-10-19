@@ -12,10 +12,10 @@ import (
 )
 
 type S3 struct {
-	Endpoint     string `help:"S3 endpoint (empty = AWS default; set for MinIO, e.g. http://localhost:9000)."`
+	Endpoint     string `help:"S3 endpoint (empty = AWS default; set for MinIO/SILO, e.g. http://localhost:9000)."`
 	Region       string `help:"AWS region." default:"us-east-1"`
 	Bucket       string `help:"Bucket name."`
-	UsePathStyle bool   `name:"use-path-style" help:"Use path-style S3 addressing (most MinIO deployments)."`
+	UsePathStyle bool   `name:"use-path-style" help:"Use path-style S3 addressing (most MinIO/SILO deployments)."`
 	IfMatch      bool   `name:"if-match" default:"true" negatable:"" help:"Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check."`
 }
 

@@ -1,8 +1,8 @@
 s3:
-  endpoint: "" # empty = AWS default; set for MinIO, e.g. "http://localhost:9000"
+  endpoint: "" # empty = AWS default; set for MinIO/SILO, e.g. "http://localhost:9000"
   region: "us-east-1"
   bucket: "events"
-  use-path-style: false # true for most MinIO deployments
+  use-path-style: false # true for most MinIO/SILO deployments
   if-match: true # false for backends that reject If-Match on PUT (Ceph RGW); needs a single writer per day
 
 paths:

@@ -66,11 +66,11 @@ affinity: {}
 # ---------------------------------------------------------------------------
 config:
   s3:
-    # Empty selects AWS; set for MinIO, e.g. http://minio.minio.svc:9000
+    # Empty selects AWS; set for MinIO/SILO, e.g. http://minio.minio.svc:9000
     endpoint: ""
     region: us-east-1
     bucket: ""
-    # true for most MinIO deployments.
+    # true for most MinIO/SILO deployments.
     use-path-style: false
     # false for backends that reject If-Match on PUT (Ceph RGW). Updates then use a
     # non-atomic HEAD check, so keep one writer per day (cronJobs.concurrencyPolicy: Forbid).

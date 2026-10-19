@@ -18,6 +18,11 @@ Runs in two modes that share one reconciliation core:
   and reconciles promptly. Serves `/healthz` + `/readyz` for
   Kubernetes probes.
 
+[SILO](https://silo.pigsty.io/) (Pigsty's community fork of MinIO) is, for
+now, a drop-in replacement for MinIO: same S3 API, `MINIO_*` settings and
+on-disk layout. MinIO no longer publishes open-source images, so use SILO
+where these docs say MinIO.
+
 See [`docs/architecture.md`](docs/architecture.md) for how it fits
 together, and [`docs/adr/`](docs/adr/) for the reasoning behind
 specific design decisions.

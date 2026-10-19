@@ -5,7 +5,7 @@
 - **One-shot commands** (`rollup …`, `checkpoint …`, `materialize`) run once and
   exit. In Kubernetes they run as CronJobs.
 - **`listen`** is a long-running daemon. It runs a day rollup whenever MinIO
-  publishes a notification over NATS.
+  (or SILO, Pigsty's drop-in MinIO fork) publishes a notification over NATS.
 
 Configuration comes from flags, from a YAML file passed with `--config`, or from
 the defaults. Flags win over the file, and the file wins over the defaults.
