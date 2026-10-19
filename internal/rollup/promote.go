@@ -198,9 +198,11 @@ func (e *Engine) decryptChildInto(ctx context.Context, codec crypto.Codec, key s
 		return fmt.Errorf("rollup: get child %s: %w", key, err)
 	}
 	defer body.Close()
+	before := into.Len()
 	if err := codec.Decrypt(ctx, into, body, key); err != nil {
 		return fmt.Errorf("rollup: decrypt child %s: %w", key, err)
 	}
+	e.logger().Debug("folded child rollup", "key", key, "bytes", into.Len()-before)
 	return nil
 }
 
