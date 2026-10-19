@@ -72,3 +72,9 @@ Some AWS SDK variables have no effect because compactor sets the value itself:
   defaults to `us-east-1`.
 - `AWS_REQUEST_CHECKSUM_CALCULATION` and `AWS_RESPONSE_CHECKSUM_VALIDATION`:
   always `when_required`, for S3-compatible backends.
+
+Backends that reject `If-Match` on PUT (Ceph RGW, e.g. SysEleven) fail every
+update with `storage: precondition failed`. Set `s3.if-match: false`
+(`--no-s3-if-match`) for them; updates then use a non-atomic HEAD check, so
+run a single writer per day, see
+[ADR 0012](adr/0012-head-check-fallback-for-backends-without-if-match.md).

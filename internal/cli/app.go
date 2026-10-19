@@ -88,6 +88,7 @@ func Bootstrap(ctx context.Context, root *CLI) (*App, error) {
 		Region:       cfg.S3.Region,
 		Bucket:       cfg.S3.Bucket,
 		UsePathStyle: cfg.S3.UsePathStyle,
+		IfMatch:      cfg.S3.IfMatch,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cli: bootstrap storage: %w", err)

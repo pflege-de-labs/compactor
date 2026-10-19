@@ -16,6 +16,7 @@ type S3 struct {
 	Region       string `help:"AWS region." default:"us-east-1"`
 	Bucket       string `help:"Bucket name."`
 	UsePathStyle bool   `name:"use-path-style" help:"Use path-style S3 addressing (most MinIO deployments)."`
+	IfMatch      bool   `name:"if-match" default:"true" negatable:"" help:"Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check."`
 }
 
 type Paths struct {

@@ -7,6 +7,7 @@ complete -c compactor -f -x -l s3-endpoint -d "S3 endpoint (empty = AWS default;
 complete -c compactor -f -x -l s3-region -d "AWS region."
 complete -c compactor -f -x -l s3-bucket -d "Bucket name."
 complete -c compactor -f -l s3-use-path-style -d "Use path-style S3 addressing (most MinIO deployments)."
+complete -c compactor -f -l s3-if-match -d "Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check."
 complete -c compactor -f -x -l paths-source-prefix -d "Base prefix under which year/month/day raw events live."
 complete -c compactor -f -x -l paths-rollup-prefix -d "Rollup key prefix."
 complete -c compactor -f -x -l paths-checkpoint-prefix -d "Checkpoint key prefix."

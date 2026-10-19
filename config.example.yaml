@@ -3,6 +3,7 @@ s3:
   region: "us-east-1"
   bucket: "events"
   use-path-style: false # true for most MinIO deployments
+  if-match: true # false for backends that reject If-Match on PUT (Ceph RGW); needs a single writer per day
 
 paths:
   source-prefix: "" # base under which year/month/day raw events live
