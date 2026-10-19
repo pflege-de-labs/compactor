@@ -19,6 +19,7 @@ encryption:
   # IV embedded in the filename) is enabled by setting the
   # COMPACTOR_SOURCE_AES_CTR_GZIP_KEY env var (hex-encoded AES key) —
   # not here, so key material never has to live in a config file.
+  # Without it, a run that finds a .jsonl.gz.enc source fails. See docs/running.md.
 
 rollup:
   straggler-days: 1 # also re-check N prior days on every hourly run

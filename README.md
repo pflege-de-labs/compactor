@@ -35,6 +35,9 @@ for the full list) and as a YAML key in `--config` (or
 `$XDG_CONFIG_HOME/compactor/config.yaml` by default) — see
 [`config.example.yaml`](config.example.yaml).
 
+See [`docs/running.md`](docs/running.md) for every command, the
+environment variables compactor reads, and how to rebuild a day.
+
 Generate the man page or shell completions directly from the binary:
 
 ```sh
