@@ -12,5 +12,5 @@ keywords:
   - rollup
 # The chart is versioned independently of the application; appVersion tracks the
 # compactor release whose image the defaults point at.
-version: 0.2.1
-appVersion: "0.2.1"
+version: 0.2.2
+appVersion: "0.2.2"
