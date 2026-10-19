@@ -64,13 +64,14 @@ re-deriving it, and notes only where compactor differs.
   23%, and `cli`/`config`/`checkpoint`/`metrics` untested), so a gate
   today would fail every PR and release. The total is written to the
   job summary instead; a gate is to be introduced once tests catch up.
-- **Renovate** (`.github/workflows/renovate.yml`, `.github/renovate.json`)
+- **Renovate** (the org-installed Renovate GitHub App, configured by
+  `.github/renovate.json`)
   pins Actions to commit SHAs, automerges Go minor/patch and Action
   digest/minor/patch bumps once CI passes, and holds majors, the Go
   toolchain and runtime base images for a person. Modules that must move
   together are grouped (AWS SDK; OpenTelemetry) as in tranquila's ADR
-  0003. Requires the `RENOVATE_TOKEN` secret, because PRs opened with the
-  workflow token do not trigger CI and automerge waits on it.
+  0003. The app opens PRs under its own identity, so they trigger CI,
+  which automerge waits on.
 
 ## Consequences
 
