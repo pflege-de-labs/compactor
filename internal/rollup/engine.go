@@ -28,6 +28,9 @@ var ErrMixedScheme = errors.New("rollup: mixed encryption scheme within one roll
 // Registry.Detect when a key's extension alone is inconclusive.
 const sniffLen = 64
 
+// progressInterval throttles info-level progress logs so a large backlog shows life without flooding the log.
+const progressInterval = 30 * time.Second
+
 type Result struct {
 	ItemsAppended int
 	SkippedBad    int
@@ -90,6 +93,7 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 	cp.Prefix = dayPrefix
 
 	sourcePrefix := joinPrefix(e.SourcePrefix, dayPrefix)
+	log.Debug("discovering source objects", "prefix", sourcePrefix)
 	events, _, err := e.Lister.Discover(ctx, sourcePrefix, storage.Cursor{})
 	if err != nil {
 		return Result{}, fmt.Errorf("rollup: discover %s: %w", sourcePrefix, err)
@@ -106,6 +110,16 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		return Result{NoOp: true}, nil
 	}
 	sort.Slice(newObjs, func(i, j int) bool { return newObjs[i].Meta.Key < newObjs[j].Meta.Key })
+	log.Info("day rollup: processing new source objects", "new", len(newObjs), "discovered", len(events))
+
+	lastProgress := time.Now()
+	progress := func(phase string, done int) {
+		if time.Since(lastProgress) < progressInterval {
+			return
+		}
+		lastProgress = time.Now()
+		log.Info("day rollup progress", "phase", phase, "done", done, "total", len(newObjs))
+	}
 
 	hadExisting := cp.RollupETag != ""
 	existingScheme := crypto.Scheme(cp.Scheme)
@@ -133,6 +147,7 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		if scheme != crypto.SchemeNone {
 			anyNewEncrypted = true
 		}
+		progress("detect", i+1)
 	}
 
 	finalScheme := existingScheme
@@ -175,7 +190,8 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 	}
 
 	appended, skippedBad := 0, 0
-	for _, d := range detected {
+	for i, d := range detected {
+		progress("decode", i)
 		srcCodec, err := e.Registry.MustFor(d.scheme)
 		if err != nil {
 			log.Warn("no codec for detected scheme, skipping object", "object", d.event.Meta.Key, "scheme", d.scheme, "error", err)
@@ -199,6 +215,7 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		}
 
 		good, bad := AppendJSONLines(&plaintext, decoded.Bytes())
+		log.Debug("processed source object", "object", d.event.Meta.Key, "scheme", d.scheme, "events", good, "bad_lines", bad)
 		appended += good
 		skippedBad += bad
 		cp.ProcessedKeys[d.event.Meta.Key] = true
