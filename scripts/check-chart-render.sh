@@ -22,6 +22,9 @@ out=$(render cronjobs-only)
 echo "$out" | grep -qx 'kind: Deployment' && fail "listen.enabled=false still rendered a Deployment"
 [ "$(echo "$out" | grep -cx 'kind: CronJob')" = 3 ] || fail "cronjobs-only values must render three CronJobs"
 echo "$out" | grep -q -- '--day=2026-10-01' || fail "cronJobs.hourly.args were not appended"
+cj() { echo "$out" | awk -v n="name: ci-compactor-$1" '$0 ~ n {f=1} f && /^---/ {exit} f'; }
+cj promote-month | grep -q 'memory: 2Gi' || fail "cronJobs.promoteMonth.resources did not override cronJobs.resources"
+cj hourly | grep -q 'memory: 256Mi' || fail "cronJobs.resources is not the default for jobs without their own"
 echo "$out" | grep -q 'if-match: false' || fail "config.s3.if-match is not rendered into the config"
 
 out=$(render existing-secrets)

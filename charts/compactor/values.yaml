@@ -194,7 +194,9 @@ cronJobs:
   backoffLimit: 1
   # Delete finished Jobs after this many seconds; empty keeps them until the history limits prune them.
   ttlSecondsAfterFinished: ""
-  # Resources for every CronJob container.
+  # Default resources for every CronJob container; a job's own `resources`
+  # replaces them as a whole (no merge), since day, week and month runs hold
+  # differently sized rollups in memory.
   resources: {}
 
   # `compactor rollup hourly`: incremental day rollup (today plus
@@ -206,6 +208,8 @@ cronJobs:
     suspend: false
     # Extra arguments, e.g. ["--day=2026-10-01"].
     args: []
+    # Overrides cronJobs.resources; holds one day's rollup in memory.
+    resources: {}
 
   # `compactor rollup promote-week`: rebuild the current ISO week's rollup from
   # its day rollups. A no-op when nothing changed.
@@ -214,6 +218,8 @@ cronJobs:
     schedule: "30 3 * * *"
     suspend: false
     args: []
+    # Overrides cronJobs.resources; holds one ISO week's rollup in memory.
+    resources: {}
 
   # `compactor rollup promote-month`: rebuild the current month's rollup from its weeks.
   promoteMonth:
@@ -221,6 +227,8 @@ cronJobs:
     schedule: "45 3 * * *"
     suspend: false
     args: []
+    # Overrides cronJobs.resources; holds one month's rollup in memory.
+    resources: {}
 
 # ---------------------------------------------------------------------------
 # Optional NetworkPolicy for every compactor pod. When enabled all ingress is
