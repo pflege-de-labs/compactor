@@ -11,8 +11,9 @@ import (
 )
 
 type RollupBackfillCmd struct {
-	From string `required:"" help:"First day to roll up (YYYY-MM-DD)."`
-	To   string `required:"" help:"Last day to roll up (YYYY-MM-DD), inclusive."`
+	From      string `required:"" help:"First day to roll up (YYYY-MM-DD)."`
+	To        string `required:"" help:"Last day to roll up (YYYY-MM-DD), inclusive."`
+	NoPromote bool   `name:"no-promote" help:"Only roll up days; skip week and month promotion, which holds a whole week or month in memory."`
 }
 
 func (c *RollupBackfillCmd) Run(ctx context.Context, app *App) error {
@@ -24,6 +25,9 @@ func (c *RollupBackfillCmd) Run(ctx context.Context, app *App) error {
 
 	// Promote even after a deferred day so the rest of the range lands; a rerun picks up the missing day.
 	firstErr := runDayRollups(ctx, app, days)
+	if c.NoPromote {
+		weeks, months = nil, nil
+	}
 	for _, w := range weeks {
 		if err := (&RollupPromoteWeekCmd{Week: w}).Run(ctx, app); err != nil {
 			if !deferrable(err) {

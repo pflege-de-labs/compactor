@@ -21,7 +21,8 @@ _compactor_rollup_promote_month() {
 _compactor_rollup_backfill() {
     _arguments -S -C -s\
         "--from=[First day to roll up (YYYY-MM-DD).]:first day to roll up (yyyy-mm-dd).:" \
-        "--to=[Last day to roll up (YYYY-MM-DD), inclusive.]:last day to roll up (yyyy-mm-dd), inclusive.:"
+        "--to=[Last day to roll up (YYYY-MM-DD), inclusive.]:last day to roll up (yyyy-mm-dd), inclusive.:" \
+        "--no-promote[Only roll up days; skip week and month promotion, which holds a whole week or month in memory.]"
 }
 
 _compactor_rollup() {
@@ -180,6 +181,7 @@ _compactor() {
         "--listen-debounce=[Coalesce a burst of notifications for one day into a single reconcile.]:coalesce a burst of notifications for one day into a single reconcile.:" \
         "--logging-level=[Log level.]:log level.:(debug info warn error)" \
         "--logging-format=[Log format.]:log format.:(text json)" \
+        "--runtime-memory-limit-ratio=[Set GOMEMLIMIT to this share of the cgroup memory limit, so GC runs before an OOM kill; 0 disables. The GOMEMLIMIT and AUTOMEMLIMIT env vars take precedence.]:set gomemlimit to this share of the cgroup memory limit, so gc runs before an oom kill; 0 disables. the gomemlimit and automemlimit env vars take precedence.:" \
         "--version[Print version and exit.]" \
         "1: :->cmds" \
         "*::arg:->args"

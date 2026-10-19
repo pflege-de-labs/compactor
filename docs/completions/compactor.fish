@@ -25,6 +25,7 @@ complete -c compactor -f -x -l listen-http-addr -d "Address to serve /healthz an
 complete -c compactor -f -x -l listen-debounce -d "Coalesce a burst of notifications for one day into a single reconcile."
 complete -c compactor -f -xa 'debug info warn error' -l logging-level -d "Log level."
 complete -c compactor -f -xa 'text json' -l logging-format -d "Log format."
+complete -c compactor -f -x -l runtime-memory-limit-ratio -d "Set GOMEMLIMIT to this share of the cgroup memory limit, so GC runs before an OOM kill; 0 disables. The GOMEMLIMIT and AUTOMEMLIMIT env vars take precedence."
 complete -c compactor -f -l version -d "Print version and exit."
 
 # rollup
@@ -46,6 +47,7 @@ complete -c compactor -f -n '__fish_seen_subcommand_from promote-month' -x -l mo
 complete -c compactor -f -n '__fish_use_subcommand' -a backfill -d 'Roll up a range of past days, then promote the weeks and months they touch.'
 complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -x -l from -d "First day to roll up (YYYY-MM-DD)."
 complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -x -l to -d "Last day to roll up (YYYY-MM-DD), inclusive."
+complete -c compactor -f -n '__fish_seen_subcommand_from backfill' -l no-promote -d "Only roll up days; skip week and month promotion, which holds a whole week or month in memory."
 
 # materialize
 complete -c compactor -f -n '__fish_use_subcommand' -a materialize -d 'Decrypt a rollup object into a local scratch file for DuckDB.'

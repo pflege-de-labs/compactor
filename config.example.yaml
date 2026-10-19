@@ -45,6 +45,9 @@ logging:
   level: info
   format: text
 
+runtime:
+  memory-limit-ratio: 0.9 # GOMEMLIMIT = ratio x cgroup memory limit; 0 disables
+
 # Metrics (both modes) are OpenTelemetry, exported via OTLP using the
 # standard environment variables rather than app config — e.g.:
 #   OTEL_METRICS_EXPORTER=otlp                  (default; "prometheus" | "console" | "none" also supported)

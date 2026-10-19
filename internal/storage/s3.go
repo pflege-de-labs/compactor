@@ -119,15 +119,28 @@ func (s *S3Store) GetRange(ctx context.Context, key string, n int64) ([]byte, er
 }
 
 func (s *S3Store) Put(ctx context.Context, key string, body io.Reader, opts PutOptions) (ObjectMeta, error) {
-	data, err := io.ReadAll(body)
+	// Upload seekable bodies in place instead of copying them; rollups can be hundreds of MB.
+	payload, ok := body.(io.ReadSeeker)
+	if !ok {
+		data, err := io.ReadAll(body)
+		if err != nil {
+			return ObjectMeta{}, err
+		}
+		payload = bytes.NewReader(data)
+	}
+	size, err := payload.Seek(0, io.SeekEnd)
 	if err != nil {
-		return ObjectMeta{}, err
+		return ObjectMeta{}, fmt.Errorf("storage: put %s: %w", key, err)
+	}
+	if _, err := payload.Seek(0, io.SeekStart); err != nil {
+		return ObjectMeta{}, fmt.Errorf("storage: put %s: %w", key, err)
 	}
 
 	input := &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
-		Body:   bytes.NewReader(data),
+		Bucket:        aws.String(s.bucket),
+		Key:           aws.String(key),
+		Body:          payload,
+		ContentLength: aws.Int64(size),
 	}
 	if opts.ContentType != "" {
 		input.ContentType = aws.String(opts.ContentType)
@@ -161,7 +174,7 @@ func (s *S3Store) Put(ctx context.Context, key string, body io.Reader, opts PutO
 
 	return ObjectMeta{
 		Key:  key,
-		Size: int64(len(data)),
+		Size: size,
 		ETag: aws.ToString(out.ETag),
 	}, nil
 }

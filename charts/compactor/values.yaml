@@ -105,6 +105,10 @@ config:
     level: info
     # text | json
     format: json
+  runtime:
+    # GOMEMLIMIT as a share of the container memory limit, so the GC frees memory
+    # before an OOM kill; 0 disables. Needs resources.limits.memory to matter.
+    memory-limit-ratio: 0.9
 
 # Name of a ConfigMap you manage that holds `config.yaml`. When set, the
 # `config` block above is ignored and no ConfigMap is rendered.

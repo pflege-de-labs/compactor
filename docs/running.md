@@ -21,7 +21,7 @@ listed [below](#environment-variables).
 | `rollup hourly [--day YYYY-MM-DD]` | Appends new source events to the day rollup. Without `--day`: today plus `--rollup-straggler-days` prior days. | hourly |
 | `rollup promote-week [--week YYYY-Www]` | Rebuilds a week rollup from its day rollups. Default: current ISO week. | daily |
 | `rollup promote-month [--month YYYY-MM]` | Rebuilds a month rollup from its week rollups. Default: current month. | daily |
-| `rollup backfill --from YYYY-MM-DD --to YYYY-MM-DD` | Runs the day rollup for every day in the range, then promotes every week and month it touches. Idempotent; rerun to pick up deferred days. | manual |
+| `rollup backfill --from YYYY-MM-DD --to YYYY-MM-DD [--no-promote]` | Runs the day rollup for every day in the range, then promotes every week and month it touches (`--no-promote` skips that). Idempotent; rerun to pick up deferred days. | manual |
 | `listen` | Event-driven day rollups, serves `/healthz` and `/readyz` on `--listen-http-addr`. | Deployment |
 | `checkpoint show --day/--week/--month …` | Prints a checkpoint as JSON. | manual |
 | `checkpoint reset --day/--week/--month … --confirm` | Clears a checkpoint's tracking state. It does not delete the rollup. | manual |
@@ -71,6 +71,12 @@ kubectl -n compactor create job compactor-events-backfill \
 kubectl -n compactor logs -f job/compactor-events-backfill
 ```
 
+Memory: a day, week or month rollup is held in memory while it is built, at
+about 1.5x its uncompressed JSONL size. Size the Job's memory limit for the
+largest day; `runtime.memory-limit-ratio` lets the GC use that limit. Week and
+month promotion hold the whole week or month, so for high-volume history pass
+`--no-promote` and promote only periods that fit.
+
 Keep `--to` before the hourly job's window (today minus `rollup.straggler-days`)
 so both never write the same day; with `s3.if-match: false` an overlap can lose
 an update. A failed or deferred day is safe to retry: rerun the Job with the same
@@ -85,6 +91,8 @@ range, already processed source objects are skipped.
 | `OTEL_METRICS_EXPORTER`, `OTEL_EXPORTER_OTLP_*`, `OTEL_RESOURCE_ATTRIBUTES`, … | OpenTelemetry metrics export, see [ADR 0007](adr/0007-otel-metrics-via-autoexport.md). Chart: `extraEnv`. |
 | `XDG_CONFIG_HOME` | Default `--config` location: `$XDG_CONFIG_HOME/compactor/config.yaml`. |
 | `XDG_CACHE_HOME` | Default `materialize --out`: `$XDG_CACHE_HOME/compactor/materialized`. |
+| `GOMEMLIMIT` | Fixed Go memory limit (e.g. `900MiB`); overrides `runtime.memory-limit-ratio`. |
+| `AUTOMEMLIMIT` | Overrides `runtime.memory-limit-ratio` (`0.0`–`1.0`), or `off` to disable it. |
 
 Some AWS SDK variables have no effect because compactor sets the value itself:
 
