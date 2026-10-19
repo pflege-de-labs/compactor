@@ -31,6 +31,12 @@ echo "$out" | grep -q 'name: compactor-s3' || fail "credentials.existingSecret i
 echo "$out" | grep -q 'secretName: compactor-age' || fail "ageIdentity.existingSecret is not mounted"
 echo "$out" | grep -q 'name: compactor-source-key' || fail "sourceAesCtrGzipKey.existingSecret is not injected"
 
+out=$(render extra-objects)
+echo "$out" | grep -qE "name: '?ci-extra-object'?$" || fail "extraObjects map entries are not rendered through tpl"
+echo "$out" | grep -q 'name: ci-extra-string$' || fail "extraObjects string entries are not rendered through tpl"
+out=$(render default --set 'extraObjects[0].kind=ConfigMap' --set 'extraObjects[0].apiVersion=v1' --set 'extraObjects[0].metadata.name=from-list')
+echo "$out" | grep -q 'name: from-list$' || fail "extraObjects as a list is not rendered"
+
 # helm exits non-zero on these by design, so capture past pipefail.
 out=$(helm template ci "$chart" 2>&1 || true)
 echo "$out" | grep -q 'config.s3.bucket is required' || fail "a missing bucket must fail the render"

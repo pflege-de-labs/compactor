@@ -1,0 +1,9 @@
+{{- /* A map lets several values files add or null out entries by key; strings go through tpl. */}}
+{{- $objs := .Values.extraObjects }}
+{{- if kindIs "map" $objs }}{{ $objs = values $objs }}{{ end }}
+{{- range $objs }}
+{{- if . }}
+---
+{{ if kindIs "string" . }}{{ tpl . $ }}{{ else }}{{ tpl (toYaml .) $ }}{{ end }}
+{{- end }}
+{{- end }}
