@@ -1,0 +1,17 @@
+# extraObjects as a map, as merged from several values files; null drops an entry.
+config:
+  s3:
+    bucket: events
+extraObjects:
+  secretStore:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: "{{ .Release.Name }}-extra-object"
+    data: {}
+  dropped: null
+  raw: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{ .Release.Name }}-extra-string

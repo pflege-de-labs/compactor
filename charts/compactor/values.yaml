@@ -235,3 +235,16 @@ networkPolicy:
     #   ports:
     #     - port: 4222
     #       protocol: TCP
+
+# ---------------------------------------------------------------------------
+# Additional manifests rendered as-is (strings and objects both pass through
+# `tpl`). A list, or a map keyed by any name so several values files can merge
+# entries or drop one by setting it to null; map entries render in key order.
+# ---------------------------------------------------------------------------
+extraObjects:
+  # name:
+  #   apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: "{{ .Release.Name }}-extra"
+  #   data: {}

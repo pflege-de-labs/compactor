@@ -52,6 +52,12 @@ compactor pushes OpenTelemetry metrics over OTLP; there is nothing to scrape, so
 ships no Service or ServiceMonitor. Point it at a collector with `otel.endpoint` /
 `otel.protocol`, or set `otel.exporter: none`. Anything else goes through `extraEnv`.
 
+## Extra objects
+
+`extraObjects` renders arbitrary manifests alongside the chart; each entry (object or
+string) goes through `tpl`. Give a list, or a map keyed by any name so several values
+files merge their entries; set a key to `null` to drop it.
+
 ## Security defaults
 
 Pods run as uid 65532 with a read-only root filesystem, no privilege escalation, all
