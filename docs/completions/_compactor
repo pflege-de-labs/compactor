@@ -157,10 +157,10 @@ _compactor() {
     _arguments -S -C -s\
         '(-h --help)'{-h,--help}"[Show context-sensitive help.]" \
         "--config=[Path to YAML config file (default: XDG config dir).]:path to yaml config file (default: xdg config dir).:" \
-        "--s3-endpoint=[S3 endpoint (empty = AWS default; set for MinIO, e.g. http://localhost:9000).]:s3 endpoint (empty = aws default; set for minio, e.g. http://localhost:9000).:" \
+        "--s3-endpoint=[S3 endpoint (empty = AWS default; set for MinIO/SILO, e.g. http://localhost:9000).]:s3 endpoint (empty = aws default; set for minio/silo, e.g. http://localhost:9000).:" \
         "--s3-region=[AWS region.]:aws region.:" \
         "--s3-bucket=[Bucket name.]:bucket name.:" \
-        "--s3-use-path-style[Use path-style S3 addressing (most MinIO deployments).]" \
+        "--s3-use-path-style[Use path-style S3 addressing (most MinIO/SILO deployments).]" \
         "--s3-if-match[Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check.]" \
         "--no-s3-if-match[Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check.]" \
         "--paths-source-prefix=[Base prefix under which year/month/day raw events live.]:base prefix under which year/month/day raw events live.:" \

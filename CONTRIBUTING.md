@@ -7,8 +7,8 @@ file assumes you're not one, though most of it applies either way).
 ## Prerequisites
 
 - Go 1.27+ (see `go.mod`).
-- For local end-to-end testing: a MinIO instance (S3-compatible
-  storage) and, for `compactor listen`, a JetStream-enabled NATS
+- For local end-to-end testing: a SILO instance (S3-compatible
+  storage, see below) and, for `compactor listen`, a JetStream-enabled NATS
   server (`nats-server -js`, from `brew install nats-server` or
   https://github.com/nats-io/nats-server).
 
@@ -68,10 +68,17 @@ in-memory `ObjectStore` fake), so you rarely need real infrastructure.
 When you do (e.g. testing the NATS consumer or S3 conditional-PUT
 behavior against a real backend):
 
+[SILO](https://silo.pigsty.io/) (Pigsty's community fork of MinIO) is, for
+now, a drop-in replacement for MinIO: same S3 API, `MINIO_*` settings and
+on-disk layout. MinIO no longer publishes open-source images, so use SILO
+where these docs say MinIO.
+
 ```sh
-# MinIO for S3-compatible storage
-minio server /tmp/minio-data &
-# then point compactor at it: s3.endpoint / --s3-endpoint, s3.use-path-style: true
+# SILO for S3-compatible storage; the image also ships `mc`
+podman run -d --name silo -p 9000:9000 \
+  -e MINIO_ROOT_USER=dev -e MINIO_ROOT_PASSWORD=devdevdev \
+  docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z server /data
+# then point compactor at it: s3.endpoint / --s3-endpoint http://localhost:9000, s3.use-path-style: true
 
 # JetStream-enabled NATS, for `compactor listen`
 nats-server -js -p 4222 &

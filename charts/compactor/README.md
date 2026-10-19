@@ -16,7 +16,7 @@ All three are independent toggles; the defaults run the listener plus the two pr
 
 | Workload | Value | Runs | Notes |
 | --- | --- | --- | --- |
-| Listener | `listen.enabled` (default `true`) | `compactor listen` | `listen.kind` is `deployment` or `statefulset`. Consumes MinIO bucket notifications from NATS JetStream, reconciles the affected day, serves `/healthz` and `/readyz` on `listen.port`. Replicas share one durable consumer. |
+| Listener | `listen.enabled` (default `true`) | `compactor listen` | `listen.kind` is `deployment` or `statefulset`. Consumes MinIO or SILO (drop-in MinIO fork) bucket notifications from NATS JetStream, reconciles the affected day, serves `/healthz` and `/readyz` on `listen.port`. Replicas share one durable consumer. |
 | Hourly rollup | `cronJobs.hourly.enabled` (default `false`) | `compactor rollup hourly` | Incremental day rollup. Use it instead of the listener, or alongside it as a safety net for missed notifications. |
 | Week promotion | `cronJobs.promoteWeek.enabled` (default `true`) | `compactor rollup promote-week` | Rebuilds the **current** ISO week from its day rollups. A no-op when nothing changed. |
 | Month promotion | `cronJobs.promoteMonth.enabled` (default `true`) | `compactor rollup promote-month` | Rebuilds the **current** month from its weeks. |

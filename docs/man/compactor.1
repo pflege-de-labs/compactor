@@ -67,7 +67,7 @@ Reserved; ISO 8601 (Monday-start) weeks are used today\&.
 Bucket name\&.
 .TP
 \fB--s3-endpoint=STRING\fP
-S3 endpoint (empty = AWS default; set for MinIO, e\&.g\&. http://localhost:9000)\&.
+S3 endpoint (empty = AWS default; set for MinIO/SILO, e\&.g\&. http://localhost:9000)\&.
 .TP
 \fB--s3-if-match\fP
 Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check\&.
@@ -76,7 +76,7 @@ Send If-Match on updates; disable for backends that reject it (Ceph RGW), which 
 AWS region\&.
 .TP
 \fB--s3-use-path-style\fP
-Use path-style S3 addressing (most MinIO deployments)\&.
+Use path-style S3 addressing (most MinIO/SILO deployments)\&.
 .TP
 \fB--version\fP
 Print version and exit\&.
