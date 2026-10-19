@@ -23,7 +23,9 @@ It does not (issue #27):
 - The day checkpoint's `rollup_etag` is the contract. If the existing
   day rollup's ETag differs, or the rollup is missing although the
   checkpoint names one, the day is rebuilt from all its source objects
-  instead of appended to.
+  instead of appended to. A run without new source objects checks this
+  with one HEAD per day, so a mismatch heals even on a day that gets no
+  more sources.
 - Every rollup write is conditioned on the object found at the target
   key: `If-Match` on the known or HEADed ETag, `If-None-Match: *` only if
   nothing is there. An object the checkpoint doesn't know comes from a

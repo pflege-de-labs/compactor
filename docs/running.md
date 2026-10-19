@@ -57,7 +57,7 @@ without the right key:
 
 A day whose rollup no longer matches its checkpoint (a crash between the two
 writes, or a deleted or edited rollup) is rebuilt from all its source objects
-on the next run that sees a new source object, see
+on the next run, see
 [ADR 0013](adr/0013-rebuild-day-when-rollup-and-checkpoint-disagree.md).
 
 ### Backfilling history

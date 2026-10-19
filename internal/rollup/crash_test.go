@@ -146,3 +146,22 @@ func TestCrashAfterWeekCreate_RetrySucceeds(t *testing.T) {
 		t.Fatalf("week rollup = %q, want one event", got)
 	}
 }
+
+func TestMismatchedDayRollup_RebuiltWithoutNewSources(t *testing.T) {
+	store, put, lines, day, _ := newCrashEngine(t)
+	put(crashDay, "a.json", `{"id":1}`)
+	put(crashDay, "b.json", `{"id":2}`)
+	if err := day(crashDay); err != nil {
+		t.Fatal(err)
+	}
+	// An overlapping run overwrote the rollup with fewer events after the checkpoint was saved.
+	if _, err := store.ObjectStore.Put(context.Background(), crashDayKey, strings.NewReader("{\"id\":1}\n"), storage.PutOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := day(crashDay); err != nil {
+		t.Fatal(err)
+	}
+	if got := lines(crashDayKey); len(got) != 2 {
+		t.Fatalf("rollup = %q, want both events back without a new source object", got)
+	}
+}

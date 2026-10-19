@@ -106,15 +106,22 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 			newObjs = append(newObjs, ev)
 		}
 	}
-	if len(newObjs) == 0 {
-		log.Debug("no new source events")
-		return Result{NoOp: true}, nil
-	}
-
 	hadExisting := cp.RollupETag != ""
 	existingScheme := crypto.Scheme(cp.Scheme)
 	if !hadExisting {
 		existingScheme = crypto.SchemeNone
+	}
+
+	if len(newObjs) == 0 {
+		// One HEAD per run catches a rollup changed or deleted after its checkpoint, e.g. by an overlapping run.
+		matches, err := e.dayRollupMatches(ctx, day, cp.RollupETag, existingScheme)
+		if err != nil {
+			return Result{}, err
+		}
+		if matches {
+			log.Debug("no new source events")
+			return Result{NoOp: true}, nil
+		}
 	}
 
 	var plaintext chunkBuffer
@@ -270,6 +277,27 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		RollupKey:     rollupKey,
 		RollupETag:    meta.ETag,
 	}, nil
+}
+
+// dayRollupMatches reports whether the day rollup still has the ETag its checkpoint recorded; no recorded rollup matches trivially.
+func (e *Engine) dayRollupMatches(ctx context.Context, day time.Time, etag string, scheme crypto.Scheme) (bool, error) {
+	if etag == "" {
+		return true, nil
+	}
+	codec, err := e.Registry.MustFor(scheme)
+	if err != nil {
+		return false, fmt.Errorf("rollup: day %s: existing scheme: %w", DayPrefix(day), err)
+	}
+	key := DayRollupKey(e.RollupPrefix, day, codec)
+	head, err := e.Store.Head(ctx, key)
+	switch {
+	case err == nil:
+		return head.ETag == etag, nil
+	case errors.Is(err, storage.ErrNotFound):
+		return false, nil
+	default:
+		return false, fmt.Errorf("rollup: head %s: %w", key, err)
+	}
 }
 
 // overwriteOpts conditions a rollup write on the object at key: If-Match on knownETag,
