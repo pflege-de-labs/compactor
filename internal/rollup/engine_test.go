@@ -372,3 +372,25 @@ func nonEmptyLines(data []byte) [][]byte {
 	}
 	return lines
 }
+
+func TestRunHourlyDayRollup_EncryptedSourceWithoutCodecFailsWithoutProcessing(t *testing.T) {
+	engine, store := newEngine(t, nil)
+	ctx := context.Background()
+	day := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
+
+	putSource(t, store, day, "a.jsonl", []byte("{\"id\":1}\n"))
+	putSource(t, store, day, "1-7f6aba7e89299d08670b0c62ba12a005.jsonl.gz.enc", []byte("{\"looks\":\"like json\"}\n\x00\x01"))
+
+	if _, err := engine.RunHourlyDayRollup(ctx, day); err == nil {
+		t.Fatal("expected an error for an encrypted source with no codec configured")
+	}
+	for _, prefix := range []string{"checkpoints", "rollups"} {
+		objs, err := store.List(ctx, prefix)
+		if err != nil {
+			t.Fatalf("list %s: %v", prefix, err)
+		}
+		if len(objs) != 0 {
+			t.Fatalf("expected nothing written under %s, got %v", prefix, objs)
+		}
+	}
+}

@@ -125,6 +125,10 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 			return Result{}, fmt.Errorf("rollup: sniff %s: %w", ev.Meta.Key, err)
 		}
 		scheme := e.Registry.Detect(ev.Meta.Key, header)
+		// Decoding ciphertext as plaintext would mark the object processed and write garbage, so fail before touching anything.
+		if scheme == crypto.SchemeNone && crypto.LooksEncrypted(ev.Meta.Key) {
+			return Result{}, fmt.Errorf("rollup: %s is encrypted but no codec for its scheme is configured (missing decryption key?)", ev.Meta.Key)
+		}
 		detected[i] = detectedEvent{event: ev, scheme: scheme}
 		if scheme != crypto.SchemeNone {
 			anyNewEncrypted = true

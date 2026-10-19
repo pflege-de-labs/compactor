@@ -58,7 +58,7 @@ func NewAgeCodec(recipients []string, identityFile string) (*AgeCodec, error) {
 }
 
 func (c *AgeCodec) Scheme() Scheme { return ageScheme }
-func (c *AgeCodec) KeyExt() string { return ".age" }
+func (c *AgeCodec) KeyExt() string { return ageKeyExt }
 
 func (c *AgeCodec) Sniff(header []byte) bool {
 	return bytes.HasPrefix(header, []byte(agePreamble))

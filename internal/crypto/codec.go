@@ -94,6 +94,17 @@ func (r *Registry) Detect(key string, header []byte) Scheme {
 	return SchemeNone
 }
 
+const (
+	ageKeyExt        = ".age"
+	aesCTRGzipKeyExt = ".jsonl.gz.enc"
+)
+
+// LooksEncrypted reports whether key carries the extension of a known
+// encrypted scheme, whether or not that scheme's codec is configured.
+func LooksEncrypted(key string) bool {
+	return hasSuffix(key, ageKeyExt) || hasSuffix(key, aesCTRGzipKeyExt)
+}
+
 func hasSuffix(s, suffix string) bool {
 	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
 }

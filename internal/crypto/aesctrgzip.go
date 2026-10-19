@@ -47,7 +47,7 @@ func NewAESCTRGzipCodec(hexKey string) (*AESCTRGzipCodec, error) {
 }
 
 func (c *AESCTRGzipCodec) Scheme() Scheme { return aesCTRGzipScheme }
-func (c *AESCTRGzipCodec) KeyExt() string { return ".jsonl.gz.enc" }
+func (c *AESCTRGzipCodec) KeyExt() string { return aesCTRGzipKeyExt }
 
 func (c *AESCTRGzipCodec) Encrypt(_ context.Context, _ io.Writer, _ io.Reader) error {
 	return errors.New("crypto/aesctrgzip: encrypt is not supported, this codec only decodes an upstream source format")
@@ -88,7 +88,7 @@ func (c *AESCTRGzipCodec) Decrypt(_ context.Context, w io.Writer, r io.Reader, k
 // ivFromKey extracts the 16-byte IV the producer embeds in the object
 // key's filename: "<...>-<32 hex chars>.jsonl.gz.enc".
 func ivFromKey(key string) ([]byte, error) {
-	base := strings.TrimSuffix(path.Base(key), ".jsonl.gz.enc")
+	base := strings.TrimSuffix(path.Base(key), aesCTRGzipKeyExt)
 	idx := strings.LastIndex(base, "-")
 	if idx < 0 {
 		return nil, fmt.Errorf("key %q has no \"-<iv>\" suffix", key)
