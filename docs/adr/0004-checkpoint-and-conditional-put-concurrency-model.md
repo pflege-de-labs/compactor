@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amended by [ADR 0012](0012-head-check-fallback-for-backends-without-if-match.md).
+Accepted. Amended by [ADR 0012](0012-head-check-fallback-for-backends-without-if-match.md) and [ADR 0013](0013-rebuild-day-when-rollup-and-checkpoint-disagree.md).
 
 ## Context
 
