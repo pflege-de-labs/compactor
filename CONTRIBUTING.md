@@ -59,7 +59,7 @@ and publishes binaries, SBOMs and a signed `checksums.txt` as a GitHub
 release. A tag with a suffix (`v0.2.0-rc.1`) is a pre-release and does
 not move `:latest`. Workflow action pins are managed by Renovate; don't
 bump them by hand. The workflows need the `SO_API_TOKEN` (SecObserve)
-and `RENOVATE_TOKEN` repository secrets.
+repository secret.
 
 ## Local end-to-end testing
 
