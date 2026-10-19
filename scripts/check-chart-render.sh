@@ -22,6 +22,7 @@ out=$(render cronjobs-only)
 echo "$out" | grep -qx 'kind: Deployment' && fail "listen.enabled=false still rendered a Deployment"
 [ "$(echo "$out" | grep -cx 'kind: CronJob')" = 3 ] || fail "cronjobs-only values must render three CronJobs"
 echo "$out" | grep -q -- '--day=2026-10-01' || fail "cronJobs.hourly.args were not appended"
+echo "$out" | grep -q 'if-match: false' || fail "config.s3.if-match is not rendered into the config"
 
 out=$(render existing-secrets)
 echo "$out" | grep -qx 'kind: ConfigMap' && fail "existingConfig must suppress the chart's own ConfigMap"

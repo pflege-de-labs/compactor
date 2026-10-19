@@ -152,6 +152,8 @@ _compactor() {
         "--s3-region=[AWS region.]:aws region.:" \
         "--s3-bucket=[Bucket name.]:bucket name.:" \
         "--s3-use-path-style[Use path-style S3 addressing (most MinIO deployments).]" \
+        "--s3-if-match[Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check.]" \
+        "--no-s3-if-match[Send If-Match on updates; disable for backends that reject it (Ceph RGW), which falls back to a non-atomic HEAD check.]" \
         "--paths-source-prefix=[Base prefix under which year/month/day raw events live.]:base prefix under which year/month/day raw events live.:" \
         "--paths-rollup-prefix=[Rollup key prefix.]:rollup key prefix.:" \
         "--paths-checkpoint-prefix=[Checkpoint key prefix.]:checkpoint key prefix.:" \

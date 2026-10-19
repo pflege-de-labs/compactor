@@ -21,11 +21,14 @@ type S3Config struct {
 	Region       string
 	Bucket       string
 	UsePathStyle bool
+	// IfMatch sends If-Match on updates; false emulates it with HEAD (see ADR 0012).
+	IfMatch bool
 }
 
 type S3Store struct {
-	client *s3.Client
-	bucket string
+	client  *s3.Client
+	bucket  string
+	ifMatch bool
 }
 
 func NewS3Store(ctx context.Context, cfg S3Config) (*S3Store, error) {
@@ -53,7 +56,7 @@ func NewS3Store(ctx context.Context, cfg S3Config) (*S3Store, error) {
 		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
 	})
 
-	return &S3Store{client: client, bucket: cfg.Bucket}, nil
+	return &S3Store{client: client, bucket: cfg.Bucket, ifMatch: cfg.IfMatch}, nil
 }
 
 func (s *S3Store) List(ctx context.Context, prefix string) ([]ObjectMeta, error) {
@@ -129,8 +132,20 @@ func (s *S3Store) Put(ctx context.Context, key string, body io.Reader, opts PutO
 	if opts.ContentType != "" {
 		input.ContentType = aws.String(opts.ContentType)
 	}
-	if opts.IfMatchETag != "" {
+	if opts.IfMatchETag != "" && s.ifMatch {
 		input.IfMatch = aws.String(opts.IfMatchETag)
+	} else if opts.IfMatchETag != "" {
+		// shortcut: HEAD-then-PUT is not atomic, safe only with one writer per key; drop once the backend honors If-Match.
+		head, err := s.Head(ctx, key)
+		if errors.Is(err, ErrNotFound) {
+			return ObjectMeta{}, ErrPreconditionFailed
+		}
+		if err != nil {
+			return ObjectMeta{}, err
+		}
+		if head.ETag != opts.IfMatchETag {
+			return ObjectMeta{}, ErrPreconditionFailed
+		}
 	}
 	if opts.IfNoneMatch != "" {
 		input.IfNoneMatch = aws.String(opts.IfNoneMatch)

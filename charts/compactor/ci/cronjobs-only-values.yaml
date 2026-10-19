@@ -2,6 +2,7 @@
 config:
   s3:
     bucket: events
+    if-match: false
 listen:
   enabled: false
 cronJobs:

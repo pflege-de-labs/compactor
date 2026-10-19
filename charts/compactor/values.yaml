@@ -72,6 +72,9 @@ config:
     bucket: ""
     # true for most MinIO deployments.
     use-path-style: false
+    # false for backends that reject If-Match on PUT (Ceph RGW). Updates then use a
+    # non-atomic HEAD check, so keep one writer per day (cronJobs.concurrencyPolicy: Forbid).
+    if-match: true
   paths:
     # Base prefix under which year/month/day raw events live (empty = bucket root).
     source-prefix: ""

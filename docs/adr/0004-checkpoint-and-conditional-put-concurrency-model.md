@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. Amended by [ADR 0012](0012-head-check-fallback-for-backends-without-if-match.md).
 
 ## Context
 
