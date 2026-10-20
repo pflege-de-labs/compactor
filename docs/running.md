@@ -50,12 +50,15 @@ Use this when a day rollup holds bad data, for example events that were decoded
 without the right key:
 
 1. Suspend the CronJobs (`cronJobs.<job>.suspend: true`) and stop the listener.
-2. Delete the day rollup object under `<rollup-prefix>/day/YYYY/MM/DD.jsonl[.age]`.
-   `checkpoint reset` leaves it in place, and the next create-only write would
-   then fail with `precondition failed`.
-3. Run `compactor checkpoint reset --day YYYY-MM-DD --confirm`.
-4. Run `compactor rollup backfill --from YYYY-MM-DD --to YYYY-MM-DD` for the day.
-   It also rebuilds the affected week and month.
+2. Run `compactor checkpoint reset --day YYYY-MM-DD --confirm`, so every source
+   object of the day counts as new again.
+3. Run `compactor rollup backfill --from YYYY-MM-DD --to YYYY-MM-DD` for the day.
+   It overwrites the old day rollup and rebuilds the affected week and month.
+
+A day whose rollup no longer matches its checkpoint (a crash between the two
+writes, or a deleted or edited rollup) is rebuilt from all its source objects
+on the next run, see
+[ADR 0013](adr/0013-rebuild-day-when-rollup-and-checkpoint-disagree.md).
 
 ### Backfilling history
 

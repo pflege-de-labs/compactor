@@ -106,9 +106,52 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 			newObjs = append(newObjs, ev)
 		}
 	}
+	hadExisting := cp.RollupETag != ""
+	existingScheme := crypto.Scheme(cp.Scheme)
+	if !hadExisting {
+		existingScheme = crypto.SchemeNone
+	}
+
 	if len(newObjs) == 0 {
-		log.Debug("no new source events")
-		return Result{NoOp: true}, nil
+		// One HEAD per run catches a rollup changed or deleted after its checkpoint, e.g. by an overlapping run.
+		matches, err := e.dayRollupMatches(ctx, day, cp.RollupETag, existingScheme)
+		if err != nil {
+			return Result{}, err
+		}
+		if matches {
+			log.Debug("no new source events")
+			return Result{NoOp: true}, nil
+		}
+	}
+
+	var plaintext chunkBuffer
+	existingKey, existingETag := "", ""
+	if hadExisting {
+		existingCodec, err := e.Registry.MustFor(existingScheme)
+		if err != nil {
+			return Result{}, fmt.Errorf("rollup: day %s: existing scheme: %w", dayPrefix, err)
+		}
+		existingKey = DayRollupKey(e.RollupPrefix, day, existingCodec)
+
+		body, meta, err := e.Store.Get(ctx, existingKey)
+		if err != nil && !errors.Is(err, storage.ErrNotFound) {
+			return Result{}, fmt.Errorf("rollup: get existing rollup %s: %w", existingKey, err)
+		}
+		if err == nil {
+			defer body.Close()
+			existingETag = meta.ETag
+		}
+		if err == nil && meta.ETag == cp.RollupETag {
+			if err := existingCodec.Decrypt(ctx, &plaintext, body, existingKey); err != nil {
+				return Result{}, fmt.Errorf("rollup: decrypt existing rollup %s: %w", existingKey, err)
+			}
+		} else {
+			// A crash between rollup and checkpoint write, or a changed or deleted rollup:
+			// appending would duplicate or drop events, so rebuild from every source object (issue #27).
+			log.Warn("day rollup does not match its checkpoint, rebuilding from all source objects",
+				"key", existingKey, "checkpoint_etag", cp.RollupETag, "rollup_etag", existingETag)
+			newObjs = events
+		}
 	}
 	sort.Slice(newObjs, func(i, j int) bool { return newObjs[i].Meta.Key < newObjs[j].Meta.Key })
 	log.Info("day rollup: processing new source objects", "new", len(newObjs), "discovered", len(events))
@@ -120,12 +163,6 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		}
 		lastProgress = time.Now()
 		log.Info("day rollup progress", "phase", phase, "done", done, "total", len(newObjs))
-	}
-
-	hadExisting := cp.RollupETag != ""
-	existingScheme := crypto.Scheme(cp.Scheme)
-	if !hadExisting {
-		existingScheme = crypto.SchemeNone
 	}
 
 	// Detect each new object's scheme independently — unlike source
@@ -161,34 +198,6 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		return Result{}, fmt.Errorf("rollup: day %s: output scheme: %w", dayPrefix, err)
 	}
 	rollupKey := DayRollupKey(e.RollupPrefix, day, outputCodec)
-
-	var plaintext chunkBuffer
-	existingETag := ""
-	if hadExisting {
-		existingCodec, err := e.Registry.MustFor(existingScheme)
-		if err != nil {
-			return Result{}, fmt.Errorf("rollup: day %s: existing scheme: %w", dayPrefix, err)
-		}
-		existingKey := DayRollupKey(e.RollupPrefix, day, existingCodec)
-
-		body, meta, err := e.Store.Get(ctx, existingKey)
-		if err != nil && !errors.Is(err, storage.ErrNotFound) {
-			return Result{}, fmt.Errorf("rollup: get existing rollup %s: %w", existingKey, err)
-		}
-		if err == nil {
-			defer body.Close()
-			if err := existingCodec.Decrypt(ctx, &plaintext, body, existingKey); err != nil {
-				return Result{}, fmt.Errorf("rollup: decrypt existing rollup %s: %w", existingKey, err)
-			}
-			// Only reuse the ETag for a conditional update if the
-			// output scheme hasn't changed since — a scheme upgrade
-			// (plaintext day gaining an encrypted event) targets a new
-			// key, created fresh; the old key is left in place.
-			if existingKey == rollupKey {
-				existingETag = meta.ETag
-			}
-		}
-	}
 
 	appended, skippedBad := 0, 0
 	for i, d := range detected {
@@ -237,11 +246,14 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		return Result{}, fmt.Errorf("rollup: encrypt rollup %s: %w", rollupKey, err)
 	}
 
-	putOpts := storage.PutOptions{ContentType: "application/x-ndjson"}
-	if existingETag != "" {
-		putOpts.IfMatchETag = existingETag
-	} else {
-		putOpts.IfNoneMatch = "*"
+	// A scheme upgrade (plaintext day gaining an encrypted event) targets a new key; the old one is left in place.
+	knownETag := ""
+	if existingKey == rollupKey {
+		knownETag = existingETag
+	}
+	putOpts, err := e.overwriteOpts(ctx, rollupKey, knownETag)
+	if err != nil {
+		return Result{}, err
 	}
 
 	meta, err := e.Store.Put(ctx, rollupKey, body, putOpts)
@@ -265,6 +277,48 @@ func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result,
 		RollupKey:     rollupKey,
 		RollupETag:    meta.ETag,
 	}, nil
+}
+
+// dayRollupMatches reports whether the day rollup still has the ETag its checkpoint recorded; no recorded rollup matches trivially.
+func (e *Engine) dayRollupMatches(ctx context.Context, day time.Time, etag string, scheme crypto.Scheme) (bool, error) {
+	if etag == "" {
+		return true, nil
+	}
+	codec, err := e.Registry.MustFor(scheme)
+	if err != nil {
+		return false, fmt.Errorf("rollup: day %s: existing scheme: %w", DayPrefix(day), err)
+	}
+	key := DayRollupKey(e.RollupPrefix, day, codec)
+	head, err := e.Store.Head(ctx, key)
+	switch {
+	case err == nil:
+		return head.ETag == etag, nil
+	case errors.Is(err, storage.ErrNotFound):
+		return false, nil
+	default:
+		return false, fmt.Errorf("rollup: head %s: %w", key, err)
+	}
+}
+
+// overwriteOpts conditions a rollup write on the object at key: If-Match on knownETag,
+// else on whatever a HEAD finds, else create-only. An object the checkpoint doesn't
+// know comes from a run that crashed before its checkpoint write; the caller's content
+// covers that run's, so overwriting it is safe (issue #27).
+func (e *Engine) overwriteOpts(ctx context.Context, key, knownETag string) (storage.PutOptions, error) {
+	opts := storage.PutOptions{ContentType: "application/x-ndjson", IfMatchETag: knownETag}
+	if knownETag != "" {
+		return opts, nil
+	}
+	head, err := e.Store.Head(ctx, key)
+	switch {
+	case err == nil:
+		opts.IfMatchETag = head.ETag
+	case errors.Is(err, storage.ErrNotFound):
+		opts.IfNoneMatch = "*"
+	default:
+		return opts, fmt.Errorf("rollup: head %s: %w", key, err)
+	}
+	return opts, nil
 }
 
 // encode returns the rollup body; plaintext output skips the codec's copy, which doubled peak memory on large days.

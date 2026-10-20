@@ -85,7 +85,7 @@ func (e *Engine) RunPromoteWeek(ctx context.Context, isoYear, isoWeek int) (Resu
 	}
 
 	rollupKey := WeekRollupKey(e.RollupPrefix, isoYear, isoWeek, codec)
-	meta, err := e.encryptAndPutRollup(ctx, codec, rollupKey, &combined, weekCP.RollupETag)
+	meta, err := e.encryptAndPutRollup(ctx, codec, rollupKey, &combined)
 	if err != nil {
 		return Result{}, err
 	}
@@ -173,7 +173,7 @@ func (e *Engine) RunPromoteMonth(ctx context.Context, year int, month time.Month
 	}
 
 	rollupKey := MonthRollupKey(e.RollupPrefix, year, month, codec)
-	meta, err := e.encryptAndPutRollup(ctx, codec, rollupKey, &combined, monthCP.RollupETag)
+	meta, err := e.encryptAndPutRollup(ctx, codec, rollupKey, &combined)
 	if err != nil {
 		return Result{}, err
 	}
@@ -205,28 +205,18 @@ func (e *Engine) decryptChildInto(ctx context.Context, codec crypto.Codec, key s
 	return nil
 }
 
-// encryptAndPutRollup encrypts plaintext and writes it to key,
-// conditioned on the rollup already existing (hadPrior=true, via
-// If-Match against the object's current ETag) or not (create-only).
-func (e *Engine) encryptAndPutRollup(ctx context.Context, codec crypto.Codec, key string, plaintext *chunkBuffer, priorETag string) (storage.ObjectMeta, error) {
+// encryptAndPutRollup encrypts plaintext and writes it to key, conditioned on the
+// object found there now. A promotion rebuilds from all children, so it overwrites
+// whatever exists, including an object from a run that crashed before its checkpoint.
+func (e *Engine) encryptAndPutRollup(ctx context.Context, codec crypto.Codec, key string, plaintext *chunkBuffer) (storage.ObjectMeta, error) {
 	body, err := encode(ctx, codec, plaintext)
 	if err != nil {
 		return storage.ObjectMeta{}, fmt.Errorf("rollup: encrypt %s: %w", key, err)
 	}
 
-	putOpts := storage.PutOptions{ContentType: "application/x-ndjson"}
-	if priorETag != "" {
-		existing, err := e.Store.Head(ctx, key)
-		switch {
-		case err == nil:
-			putOpts.IfMatchETag = existing.ETag
-		case errors.Is(err, storage.ErrNotFound):
-			putOpts.IfNoneMatch = "*"
-		default:
-			return storage.ObjectMeta{}, fmt.Errorf("rollup: head %s: %w", key, err)
-		}
-	} else {
-		putOpts.IfNoneMatch = "*"
+	putOpts, err := e.overwriteOpts(ctx, key, "")
+	if err != nil {
+		return storage.ObjectMeta{}, err
 	}
 
 	meta, err := e.Store.Put(ctx, key, body, putOpts)
