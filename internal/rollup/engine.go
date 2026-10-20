@@ -85,7 +85,7 @@ type detectedEvent struct {
 // next scheduled run catches up.
 func (e *Engine) RunHourlyDayRollup(ctx context.Context, day time.Time) (Result, error) {
 	dayPrefix := DayPrefix(day)
-	log := e.logger().With("day", dayPrefix)
+	log := e.logger().With("day", day.Format("2006-01-02"))
 
 	cp, cpETag, err := e.Checkpoints.LoadDay(ctx, day)
 	if err != nil {
