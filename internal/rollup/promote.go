@@ -46,7 +46,7 @@ func (e *Engine) RunPromoteWeek(ctx context.Context, isoYear, isoWeek int) (Resu
 			schemeSet = true
 		} else if crypto.Scheme(dayCP.Scheme) != scheme {
 			e.logger().Warn("mixed encryption scheme across days in week rollup, skipping cycle",
-				"week", weekKeyStr, "day", dayPrefix)
+				"week", weekKeyStr, "day", d.Format("2006-01-02"))
 			return Result{}, ErrMixedScheme
 		}
 
