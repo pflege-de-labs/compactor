@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	filippo.io/age v1.3.2
-	github.com/KimMachineGun/automemlimit v1.0.0
+	github.com/KimMachineGun/automemlimit v1.0.1
 	github.com/adrg/xdg v0.5.3
 	github.com/alecthomas/kong v1.16.1
 	github.com/alecthomas/kong-yaml v0.2.0
@@ -15,7 +15,7 @@ require (
 	github.com/aws/smithy-go v1.28.5
 	github.com/miekg/king v1.0.17
 	github.com/muesli/roff v0.1.0
-	github.com/nats-io/nats.go v1.54.0
+	github.com/nats-io/nats.go v1.55.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.72.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0
