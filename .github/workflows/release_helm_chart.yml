@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   release:
-    uses: pflege-de-labs/github-workflows/.github/workflows/helm-release.yml@2cf5d3bd6cabe68176ae9a62b29177b3aa365ca2 # v1.2.0
+    uses: pflege-de-labs/github-workflows/.github/workflows/helm-release.yml@cdedb3bad158c080e98a22fab96b099280b758b5 # v2.0.0
     # id-token is asked for by the template even though compactor's charts are not signed.
     permissions:
       contents: write
