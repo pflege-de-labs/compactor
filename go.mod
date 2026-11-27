@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.22
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.116.1
 	github.com/aws/smithy-go v1.28.11
-	github.com/miekg/king v1.0.17
+	github.com/miekg/king v1.0.18
 	github.com/muesli/roff v0.1.0
 	github.com/nats-io/nats.go v1.56.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.72.0
